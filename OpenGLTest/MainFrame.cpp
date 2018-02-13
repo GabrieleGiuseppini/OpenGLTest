@@ -10,6 +10,7 @@
 #include <wx/string.h>
 
 #include <cassert>
+#include <chrono>
 #include <sstream>
 
 namespace /* anonymous */ {
@@ -454,13 +455,12 @@ bool MainFrame::RenderSetup()
         unsigned int myVertexShader = glCreateShader(GL_VERTEX_SHADER);
 
         const char *vertexShaderSource = R"(
-            attribute vec3 aPos;
-            varying vec4 color;
-    
+            attribute vec3 InputPos1;
+            varying vec4 PassingColor1;
             void main()
             {
-                gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-                color = gl_Color;
+                PassingColor1 = vec4(1.0, 0.5, 0.2, 1.0);
+                gl_Position = vec4(InputPos1.xyz, 1.0);
             }
             )";
 
@@ -490,12 +490,11 @@ bool MainFrame::RenderSetup()
         unsigned int myFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
         const char *fragmentShaderSource = R"(
-            varying vec4 color;
-
+            varying vec4 PassingColor1;
+            uniform vec4 ParamBaseColor1;
             void main()
             {
-                vec4 color = vec4(1.0, 0.5, 0.2, 1.0);
-                gl_FragColor = color;
+                gl_FragColor = PassingColor1 + ParamBaseColor1;
             } 
             )";
 
@@ -582,6 +581,16 @@ bool MainFrame::Render()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, myEBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
+
+    //
+    // Set params
+    //
+
+    static auto startTime = std::chrono::steady_clock::now();
+    auto phase = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime).count() % 5000;
+    float phaseValue = static_cast<float>(phase) / 5000.0f;
+    int baseColor1Location = glGetUniformLocation(mShaderProgram, "ParamBaseColor1");
+    glUniform4f(baseColor1Location, 0.0f, phaseValue, 0.0f, 1.0f);
     
     
     //
