@@ -567,10 +567,10 @@ bool MainFrame::Render()
 
     float vertices[] = {
         // positions         // colors
-        0.5f, -0.1f, 0.0f,  1.0f, 0.0f, 0.0f,  // bottom right
-        -0.5f, -0.1f, 0.0f,  0.0f, 1.0f, 0.0f,  // bottom left
-        0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f,   // top 
-        0.0f,  -0.5f, 0.0f,  0.0f, 0.0f, 1.0f   // bottom
+        0.5f, -0.1f, -1.0f,  1.0f, 0.0f, 0.0f,  // bottom right
+        -0.5f, -0.1f, -1.0f,  0.0f, 1.0f, 0.0f,  // bottom left
+        0.0f,  0.5f, -1.0f,  0.0f, 0.0f, 1.0f,   // top 
+        0.0f,  -0.5f, -1.0f,  0.0f, 0.0f, 1.0f   // bottom
     };
     
     unsigned int myVBO;
@@ -615,23 +615,38 @@ bool MainFrame::Render()
     int baseColor1Location = glGetUniformLocation(mShaderProgram, "ParamBaseColor1");
     glUniform4f(baseColor1Location, 0.0f, phaseValue, 0.0f, 1.0f);
 
-    float projTrans1[4][4] =
-    {
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f
-    };
+
 
     float translateX = phaseValue;
     float translateY = phaseValue;
-    projTrans1[3][0] = translateX;
-    projTrans1[3][1] = translateY;
+
+    float zoom = 1.0f;
+    float right = 1024.0f / 768.0f * zoom;
+    float left = -right;
+    float top = zoom;
+    float bottom = -zoom;
+    float zNear = 1.0f;
+    float zFar = 1000.0f;
+
+    float orthoTrans[4][4] =
+    {
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 1
+    };
+
+    orthoTrans[0][0] = 2.0f / (right - left);
+    orthoTrans[1][1] = 2.0f / (top - bottom);
+    orthoTrans[2][2] = -2.0f / (zFar - zNear);
+    orthoTrans[3][0] = -(right + left) / (right - left) + translateX;
+    orthoTrans[3][1] = -(top + bottom) / (top - bottom) + translateY;
+    orthoTrans[3][2] = -(zFar + zNear) / (zFar - zNear);
 
     int projTrans1Location = glGetUniformLocation(mShaderProgram, "ParamProjTrans1");
-    glUniformMatrix4fv(projTrans1Location, 1, GL_FALSE, &projTrans1[0][0]);
+    glUniformMatrix4fv(projTrans1Location, 1, GL_FALSE, &orthoTrans[0][0]);
 
-    
+
     //
     // Draw
     //
