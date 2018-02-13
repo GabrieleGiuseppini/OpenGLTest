@@ -456,10 +456,11 @@ bool MainFrame::RenderSetup()
 
         const char *vertexShaderSource = R"(
             attribute vec3 InputPos1;
-            varying vec4 PassingColor1;
+            attribute vec3 InputCol1;
+            varying vec4 InternalColor1;
             void main()
             {
-                PassingColor1 = vec4(1.0, 0.5, 0.2, 1.0);
+                InternalColor1 = vec4(InputCol1.xyz, 1.0);
                 gl_Position = vec4(InputPos1.xyz, 1.0);
             }
             )";
@@ -490,11 +491,11 @@ bool MainFrame::RenderSetup()
         unsigned int myFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
         const char *fragmentShaderSource = R"(
-            varying vec4 PassingColor1;
+            varying vec4 InternalColor1;
             uniform vec4 ParamBaseColor1;
             void main()
             {
-                gl_FragColor = PassingColor1 + ParamBaseColor1;
+                gl_FragColor = InternalColor1 + ParamBaseColor1;
             } 
             )";
 
@@ -521,9 +522,14 @@ bool MainFrame::RenderSetup()
     //
     // Link program
     //
-    
-    glLinkProgram(mShaderProgram);
 
+    // Bind attribute locations
+    glBindAttribLocation(mShaderProgram, 0, "InputPos1");
+    glBindAttribLocation(mShaderProgram, 1, "InputCol1");
+
+    // Link
+    glLinkProgram(mShaderProgram);
+    
     // Check
     glGetProgramiv(mShaderProgram, GL_LINK_STATUS, &compileSuccess);
     if (!compileSuccess)
@@ -533,7 +539,12 @@ bool MainFrame::RenderSetup()
         return false;
     }
 
-    // Use
+
+
+    //
+    // Use program
+    //
+
     glUseProgram(mShaderProgram);
 
     return true;
@@ -548,38 +559,48 @@ bool MainFrame::Render()
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
     //
     // Array buffer
     //
 
+    float vertices[] = {
+        // positions         // colors
+        0.5f, -0.1f, 0.0f,  1.0f, 0.0f, 0.0f,  // bottom right
+        -0.5f, -0.1f, 0.0f,  0.0f, 1.0f, 0.0f,  // bottom left
+        0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f,   // top 
+        0.0f,  -0.5f, 0.0f,  0.0f, 0.0f, 1.0f   // bottom
+    };
+    
     unsigned int myVBO;
     glGenBuffers(1, &myVBO);
-    
-    float vertices[] = {
-        -0.5f, -0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        -0.5f, 0.5f, 0.0f,
-        0.5f, 0.5f, 0.0f
-    };
-
     glBindBuffer(GL_ARRAY_BUFFER, myVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    // Pos
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+    
+    // Col
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+
+    //
+    // Setup elements
+    //
+
+    unsigned int indices[] =
+    {
+        0, 1, 2,   // first triangle
+        0, 1, 3    // second triangle
+    };
 
     unsigned int myEBO;
     glGenBuffers(1, &myEBO);
-    
-    unsigned int indices[] =
-    {
-        0, 1, 3,   // first triangle
-        1, 2, 3    // second triangle
-    };
-
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, myEBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+
 
 
     //
@@ -591,13 +612,14 @@ bool MainFrame::Render()
     float phaseValue = static_cast<float>(phase) / 5000.0f;
     int baseColor1Location = glGetUniformLocation(mShaderProgram, "ParamBaseColor1");
     glUniform4f(baseColor1Location, 0.0f, phaseValue, 0.0f, 1.0f);
-    
+
     
     //
     // Draw
     //
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    //glDrawArrays(GL_TRIANGLES, 0, 3);
 
     glFlush();
 
