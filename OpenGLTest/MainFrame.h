@@ -64,7 +64,11 @@ private:
 
 private:
 
+    bool RenderSetup();
     bool Render();
+    void RenderCleanup();
+
+    unsigned int mShaderProgram;
 
 private:
 

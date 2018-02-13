@@ -107,6 +107,8 @@ MainFrame::MainFrame()
 
     glViewport(0, 0, mMainGLCanvas->GetSize().GetWidth(), mMainGLCanvas->GetSize().GetHeight());
 
+    RenderSetup();
+
 
 	//
 	// Build menu
@@ -177,6 +179,8 @@ void MainFrame::OnMainFrameClose(wxCloseEvent & /*event*/)
 	mStatsRefreshTimer->Stop();
 
 	Destroy();
+
+    RenderCleanup();
 }
 
 void MainFrame::OnQuit(wxCommandEvent & /*event*/)
@@ -430,44 +434,17 @@ void MainFrame::OnAboutMenuItemSelected(wxCommandEvent & /*event*/)
 ////    return true;
 ////}
 
-bool MainFrame::Render()
+bool MainFrame::RenderSetup()
 {
     int compileSuccess;
     char infoLog[1024];
-
-    //
-    // Clear canvas 
-    //
-
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
-    //
-    // Array buffer
-    //
-
-    unsigned int myVBO;
-    glGenBuffers(1, &myVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, myVBO);
-
-    float vertices[] = {
-        -0.5f, -0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        0.0f,  0.5f, 0.0f
-    };
-
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
 
 
     //
     // Shader program
     //
 
-    unsigned int myShaderProgram = glCreateProgram();
+    mShaderProgram = glCreateProgram();
 
     {
         //
@@ -500,7 +477,7 @@ bool MainFrame::Render()
         }
 
         // Attach
-        glAttachShader(myShaderProgram, myVertexShader);
+        glAttachShader(mShaderProgram, myVertexShader);
 
         glDeleteShader(myVertexShader);
     }
@@ -535,7 +512,7 @@ bool MainFrame::Render()
         }
 
         // Attach
-        glAttachShader(myShaderProgram, myFragmentShader);
+        glAttachShader(mShaderProgram, myFragmentShader);
 
         glDeleteShader(myFragmentShader);
     }
@@ -546,39 +523,83 @@ bool MainFrame::Render()
     // Link program
     //
     
-    glLinkProgram(myShaderProgram);
+    glLinkProgram(mShaderProgram);
 
     // Check
-    glGetProgramiv(myShaderProgram, GL_LINK_STATUS, &compileSuccess);
+    glGetProgramiv(mShaderProgram, GL_LINK_STATUS, &compileSuccess);
     if (!compileSuccess)
     {
-        glGetShaderInfoLog(myShaderProgram, sizeof(infoLog), NULL, infoLog);
+        glGetShaderInfoLog(mShaderProgram, sizeof(infoLog), NULL, infoLog);
         wxMessageBox(infoLog, "ERROR Linking program");
         return false;
     }
 
     // Use
-    glUseProgram(myShaderProgram);
-
-    //
-    // Draw
-    //
-
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-
-    // Flush all the draw operations and flip the back buffer onto the screen.	
-    glFlush();
-    mMainGLCanvas->SwapBuffers();
-
-
-    //
-    // Cleanup
-    //    
-
-    glUseProgram(0);
+    glUseProgram(mShaderProgram);
 
     return true;
 }
 
+bool MainFrame::Render()
+{
+    //
+    // Clear canvas 
+    //
+
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+    //
+    // Array buffer
+    //
+
+    unsigned int myVBO;
+    glGenBuffers(1, &myVBO);
+    
+    float vertices[] = {
+        -0.5f, -0.5f, 0.0f,
+        0.5f, -0.5f, 0.0f,
+        -0.5f, 0.5f, 0.0f,
+        0.5f, 0.5f, 0.0f
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, myVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    unsigned int myEBO;
+    glGenBuffers(1, &myEBO);
+    
+    unsigned int indices[] =
+    {
+        0, 1, 3,   // first triangle
+        1, 2, 3    // second triangle
+    };
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, myEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    
+    
+    //
+    // Draw
+    //
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    glFlush();
+
+    mMainGLCanvas->SwapBuffers();
+
+    return true;
+}
+
+void MainFrame::RenderCleanup()
+{
+    glUseProgram(0);
+}
 
 
