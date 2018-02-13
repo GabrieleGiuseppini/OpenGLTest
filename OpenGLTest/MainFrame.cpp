@@ -457,11 +457,11 @@ bool MainFrame::RenderSetup()
         const char *vertexShaderSource = R"(
             attribute vec3 InputPos1;
             attribute vec3 InputCol1;
-            varying vec4 InternalColor1;
+            varying vec3 InternalColor1;
             uniform mat4 ParamProjTrans1;
             void main()
             {
-                InternalColor1 = vec4(InputCol1.xyz, 1.0);
+                InternalColor1 = InputCol1;
                 gl_Position = ParamProjTrans1 * vec4(InputPos1.xyz, 1.0);
             }
             )";
@@ -492,11 +492,13 @@ bool MainFrame::RenderSetup()
         unsigned int myFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
         const char *fragmentShaderSource = R"(
-            varying vec4 InternalColor1;
-            uniform vec4 ParamBaseColor1;
+            varying vec3 InternalColor1;
+            uniform float ParamAmbientLightStrength;
+            uniform vec3 ParamAmbientLightColor;
             void main()
             {
-                gl_FragColor = InternalColor1 + ParamBaseColor1;
+                vec3 ambientLight = ParamAmbientLightStrength * ParamAmbientLightColor;
+                gl_FragColor = vec4(ambientLight * InternalColor1, 1.0);
             } 
             )";
 
@@ -612,9 +614,11 @@ bool MainFrame::Render()
     static auto startTime = std::chrono::steady_clock::now();
     auto phase = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime).count() % 5000;
     float phaseValue = static_cast<float>(phase) / 5000.0f;
-    int baseColor1Location = glGetUniformLocation(mShaderProgram, "ParamBaseColor1");
-    glUniform4f(baseColor1Location, 0.0f, phaseValue, 0.0f, 1.0f);
+    int ambientLightStrengthLocation = glGetUniformLocation(mShaderProgram, "ParamAmbientLightStrength");
+    glUniform1f(ambientLightStrengthLocation, phaseValue);
 
+    int ambientLightColorLocation = glGetUniformLocation(mShaderProgram, "ParamAmbientLightColor");
+    glUniform3f(ambientLightColorLocation, 1.0, 1.0, 1.0);
 
 
     float translateX = phaseValue;
