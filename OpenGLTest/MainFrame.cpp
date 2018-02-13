@@ -458,10 +458,11 @@ bool MainFrame::RenderSetup()
             attribute vec3 InputPos1;
             attribute vec3 InputCol1;
             varying vec4 InternalColor1;
+            uniform mat4 ParamProjTrans1;
             void main()
             {
                 InternalColor1 = vec4(InputCol1.xyz, 1.0);
-                gl_Position = vec4(InputPos1.xyz, 1.0);
+                gl_Position = ParamProjTrans1 * vec4(InputPos1.xyz, 1.0);
             }
             )";
 
@@ -547,6 +548,7 @@ bool MainFrame::RenderSetup()
 
     glUseProgram(mShaderProgram);
 
+
     return true;
 }
 
@@ -612,6 +614,22 @@ bool MainFrame::Render()
     float phaseValue = static_cast<float>(phase) / 5000.0f;
     int baseColor1Location = glGetUniformLocation(mShaderProgram, "ParamBaseColor1");
     glUniform4f(baseColor1Location, 0.0f, phaseValue, 0.0f, 1.0f);
+
+    float projTrans1[4][4] =
+    {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+
+    float translateX = phaseValue;
+    float translateY = phaseValue;
+    projTrans1[3][0] = translateX;
+    projTrans1[3][1] = translateY;
+
+    int projTrans1Location = glGetUniformLocation(mShaderProgram, "ParamProjTrans1");
+    glUniformMatrix4fv(projTrans1Location, 1, GL_FALSE, &projTrans1[0][0]);
 
     
     //
