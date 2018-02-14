@@ -11,12 +11,10 @@
 
 RenderContext::RenderContext()
     : mLandShaderProgram(0)
-    , mLandShaderAmbientLightParameter(0)
     , mLandShaderLandColorParameter(0)
     , mLandShaderOrthoMatrixParameter(0)
     , mLandShaderVBO(0)
     , mShipTriangleShaderProgram(0)
-    , mShipTriangleShaderAmbientLightParameter(0)
     , mShipTriangleShaderOrthoMatrixParameter(0)
     , mShipTriangleShaderPointVBO(0)
     , mShipTriangleShaderTriangleVBO(0)
@@ -74,10 +72,9 @@ RenderContext::RenderContext()
 
     char const * landFragmentShaderSource = R"(
         uniform vec3 paramLandColor;
-        uniform vec3 paramAmbientLight;
         void main()
         {
-            gl_FragColor = vec4(paramAmbientLight * paramLandColor, 1.0);
+            gl_FragColor = vec4(paramLandColor.xyz, 1.0);
         } 
     )";
 
@@ -91,7 +88,6 @@ RenderContext::RenderContext()
 
     // Get uniform locations
     mLandShaderLandColorParameter = GetParameterLocation(mLandShaderProgram, "paramLandColor");
-    mLandShaderAmbientLightParameter = GetParameterLocation(mLandShaderProgram, "paramAmbientLight");
     mLandShaderOrthoMatrixParameter = GetParameterLocation(mLandShaderProgram, "paramOrthoMatrix");
 
     // Create VBO
@@ -138,12 +134,9 @@ RenderContext::RenderContext()
         // Inputs from previous shader
         varying vec3 vertexCol;
 
-        // Parameters
-        uniform vec3 paramAmbientLight;
-
         void main()
         {
-            gl_FragColor = vec4(paramAmbientLight * vertexCol, 1.0);
+            gl_FragColor = vec4(vertexCol.xyz, 1.0);
         } 
     )";
 
@@ -157,7 +150,6 @@ RenderContext::RenderContext()
     LinkProgram(mShipTriangleShaderProgram, "ShipTriangle");
 
     // Get uniform locations
-    mShipTriangleShaderAmbientLightParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramAmbientLight");
     mShipTriangleShaderOrthoMatrixParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramOrthoMatrix");
 
     // Create VBOs
@@ -279,7 +271,6 @@ void RenderContext::RenderLandEnd()
     glUseProgram(mLandShaderProgram);
 
     // Set parameters
-    glUniform3f(mLandShaderAmbientLightParameter, 1.0f, 1.0f, 1.0f);
     glUniformMatrix4fv(mLandShaderOrthoMatrixParameter, 1, GL_FALSE, &(mOrthoMatrix[0][0]));
 
     // Upload land buffer 
@@ -327,7 +318,6 @@ void RenderContext::RenderShipTrianglesEnd()
     glUseProgram(mShipTriangleShaderProgram);
 
     // Set parameters
-    glUniform3f(mShipTriangleShaderAmbientLightParameter, 1.0f, 1.0f, 1.0f);
     glUniformMatrix4fv(mShipTriangleShaderOrthoMatrixParameter, 1, GL_FALSE, &(mOrthoMatrix[0][0]));
 
     // Upload ship points buffer 

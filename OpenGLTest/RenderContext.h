@@ -28,8 +28,6 @@ public:
     
     void SetCameraPosition(int x, int y);
 
-    void SetAmbientLightStrength(float strength);
-
 public:
 
     void RenderStart();
@@ -177,13 +175,11 @@ private:
     //
 
     GLuint mLandShaderProgram;
-    GLint mLandShaderAmbientLightParameter;
     GLint mLandShaderLandColorParameter;
     GLint mLandShaderOrthoMatrixParameter;
     GLuint mLandShaderVBO;
 
     GLuint mShipTriangleShaderProgram;
-    GLint mShipTriangleShaderAmbientLightParameter;
     GLint mShipTriangleShaderOrthoMatrixParameter;
     GLuint mShipTriangleShaderPointVBO;
     GLuint mShipTriangleShaderTriangleVBO;
