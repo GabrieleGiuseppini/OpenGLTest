@@ -229,6 +229,14 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
     mGameTimer->Start(0, true);
 
     //
+    // Calculate ambient light
+    //
+
+    static auto startTime = std::chrono::steady_clock::now();
+    auto phase = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime).count();
+    mAmbientLightIntensity = (1.0f + sinf(static_cast<float>(phase) / 2500.0f)) / 2.0f;
+
+    //
     // Render
     //
 
@@ -278,7 +286,7 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
         for (int r = 0; r < WorldHeight; ++r)
         {
             Point * a = &(mPoints[c][r]);
-            vec3f Colour = a->GetColour();
+            vec3f Colour = a->GetColour(mAmbientLightIntensity);
 
             mRenderContext->RenderShipTriangle_Point(
                 a->Position.x,

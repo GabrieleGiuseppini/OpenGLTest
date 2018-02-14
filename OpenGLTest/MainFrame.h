@@ -90,7 +90,7 @@ private:
 
         int RenderIndex;
 
-        vec3f GetColour()
+        vec3f GetColour(float ambientLightIntensity)
         {
             static constexpr vec3f LightPointColour = vec3f(1.0f, 1.0f, 0.25f);
             static constexpr vec3f WetPointColour = vec3f(0.0f, 0.0f, 0.8f);
@@ -100,10 +100,9 @@ private:
             vec3f colour1 = Colour * (1.0f - colorWetness)
                 + WetPointColour * colorWetness;
 
-            //if (Light == 0.0f)
-            //    return colour1;
+            colour1 *= ambientLightIntensity;
 
-            float const colorLightness = fminf(Light, 1.0f) * 0.95f;
+            float const colorLightness = Light;
 
             return colour1 * (1.0f - colorLightness)
                 + LightPointColour * colorLightness;
@@ -139,6 +138,8 @@ private:
     Point mPoints[WorldWidth][WorldHeight];
     std::vector<Spring> mSprings;
     std::vector<Triangle> mTriangles;
+
+    float mAmbientLightIntensity;
 
 private:
 
