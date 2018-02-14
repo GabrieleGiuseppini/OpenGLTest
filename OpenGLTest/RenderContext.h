@@ -113,9 +113,7 @@ public:
         float y,
         float r,
         float g,
-        float b,
-        float water,
-        float light)
+        float b)
     {
         assert(mShipTrianglePointBufferSize + 1u <= mShipTrianglePointBufferMaxSize);
 
@@ -126,8 +124,6 @@ public:
         shipTriangleElement_Point->r = r;
         shipTriangleElement_Point->g = g;
         shipTriangleElement_Point->b = b;
-        shipTriangleElement_Point->water = water;
-        shipTriangleElement_Point->light = light;
 
         ++mShipTrianglePointBufferSize;
     }
@@ -188,10 +184,6 @@ private:
     GLuint mLandShaderVBO;
 
     GLuint mShipTriangleShaderProgram;
-    GLint mShipTriangleShaderAlphaWaterParameter;
-    GLint mShipTriangleShaderWaterColorParameter;
-    GLint mShipTriangleShaderAlphaLightParameter;
-    GLint mShipTriangleShaderLightColorParameter;
     GLint mShipTriangleShaderAmbientLightStrengthParameter;
     GLint mShipTriangleShaderAmbientLightColorParameter;
     GLint mShipTriangleShaderOrthoMatrixParameter;
@@ -218,8 +210,6 @@ private:
         float r;
         float g;
         float b;
-        float water;
-        float light;
     };
 
     struct ShipTriangleElement_Triangle

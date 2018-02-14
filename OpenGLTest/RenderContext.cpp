@@ -17,10 +17,6 @@ RenderContext::RenderContext()
     , mLandShaderOrthoMatrixParameter(0)
     , mLandShaderVBO(0)
     , mShipTriangleShaderProgram(0)
-    , mShipTriangleShaderAlphaWaterParameter(0)
-    , mShipTriangleShaderWaterColorParameter(0)
-    , mShipTriangleShaderAlphaLightParameter(0)
-    , mShipTriangleShaderLightColorParameter(0)
     , mShipTriangleShaderAmbientLightStrengthParameter(0)
     , mShipTriangleShaderAmbientLightColorParameter(0)
     , mShipTriangleShaderOrthoMatrixParameter(0)
@@ -126,24 +122,16 @@ RenderContext::RenderContext()
         // Inputs
         attribute vec2 inputPos;
         attribute vec3 inputCol;
-        attribute float inputWater;
-        attribute float inputLight;
 
         // Outputs
         varying vec3 vertexCol;
 
         // Params
-        uniform float paramAlphaWater;
-        uniform vec3 paramWaterCol;
-        uniform float paramAlphaLight;
-        uniform vec3 paramLightCol;
         uniform mat4 paramOrthoMatrix;
 
         void main()
         {
-            float waterFactor = inputWater * paramAlphaWater;
-            float lightFactor = inputLight * paramAlphaLight;
-            vertexCol = (inputCol * (1.0 - waterFactor) + paramWaterCol * waterFactor) * (1.0 - lightFactor) + paramLightCol * lightFactor;
+            vertexCol = inputCol;
 
             gl_Position = paramOrthoMatrix * vec4(inputPos.xy, -1.0, 1.0);
         }
@@ -172,17 +160,11 @@ RenderContext::RenderContext()
     // Bind attribute locations
     glBindAttribLocation(mShipTriangleShaderProgram, 0, "inputPos");
     glBindAttribLocation(mShipTriangleShaderProgram, 1, "inputCol");
-    glBindAttribLocation(mShipTriangleShaderProgram, 2, "inputWater");
-    glBindAttribLocation(mShipTriangleShaderProgram, 3, "inputLight");
 
     // Link
     LinkProgram(mShipTriangleShaderProgram, "ShipTriangle");
 
     // Get uniform locations
-    mShipTriangleShaderAlphaWaterParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramAlphaWater");
-    mShipTriangleShaderWaterColorParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramWaterCol");
-    mShipTriangleShaderAlphaLightParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramAlphaLight");
-    mShipTriangleShaderLightColorParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramLightCol");
     mShipTriangleShaderAmbientLightStrengthParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramAmbientLightStrength");
     mShipTriangleShaderAmbientLightColorParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramAmbientLightColor");
     mShipTriangleShaderOrthoMatrixParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramOrthoMatrix");
@@ -194,10 +176,6 @@ RenderContext::RenderContext()
     glUseProgram(mShipTriangleShaderProgram);
 
     // Set hardcoded parameters    
-    glUniform1f(mShipTriangleShaderAlphaWaterParameter, 0.7f);
-    glUniform3f(mShipTriangleShaderWaterColorParameter, 0.0f, 0.0f, 0.8f);
-    glUniform1f(mShipTriangleShaderAlphaLightParameter, 0.95f);
-    glUniform3f(mShipTriangleShaderLightColorParameter, 1.0f, 1.0f, 0.25f);
     glUniform3f(mShipTriangleShaderAmbientLightColorParameter, 1.0f, 1.0f, 1.0f);
     
     glUseProgram(0);
@@ -367,34 +345,21 @@ void RenderContext::RenderShipTrianglesEnd()
     glBufferData(GL_ARRAY_BUFFER, mShipTrianglePointBufferSize * sizeof(ShipTriangleElement_Point), mShipTrianglePointBuffer.get(), GL_STATIC_DRAW);
 
     // Describe InputPos
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (2 + 3 + 1 + 1) * sizeof(float), (void*)(0));
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (2 + 3) * sizeof(float), (void*)(0));
     glEnableVertexAttribArray(0);
     // Describe InputCol
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, (2 + 3 + 1 + 1) * sizeof(float), (void*)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, (2 + 3) * sizeof(float), (void*)(2 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    // Describe Water
-    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, (2 + 3 + 1 + 1) * sizeof(float), (void*)((2 + 3) * sizeof(float)));
-    glEnableVertexAttribArray(2);
-    // Describe Light
-    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, (2 + 3 + 1 + 1) * sizeof(float), (void*)((2 + 3 + 1) * sizeof(float)));
-    glEnableVertexAttribArray(3);
 
     // Upload ship triangles buffer 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mShipTriangleShaderTriangleVBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, mShipTriangleTriangleBufferSize * sizeof(ShipTriangleElement_Triangle), mShipTriangleTriangleBuffer.get(), GL_STATIC_DRAW);
 
-    // Smooth lines and points
-    glEnable(GL_LINE_SMOOTH);
     // Set blending function
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    // Set primitives' thickness
-    glPointSize(0.15f * mCanvasHeight / mZoom);
-    glLineWidth(0.1f * mCanvasHeight / mZoom);
-
 
     // Draw
-    //glDrawArrays(GL_TRIANGLES, 0, 3 * mShipTriangleBufferSize);
     glDrawElements(GL_TRIANGLES, 3 * mShipTriangleTriangleBufferSize, GL_UNSIGNED_INT, 0);
 
     // Stop using program

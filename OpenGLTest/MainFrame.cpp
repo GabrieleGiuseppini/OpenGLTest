@@ -278,16 +278,14 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
         for (int r = 0; r < WorldHeight; ++r)
         {
             Point * a = &(mPoints[c][r]);
-            vec3f Colour = a->Colour;
+            vec3f Colour = a->GetColour();
 
             mRenderContext->RenderShipTriangle_Point(
                 a->Position.x,
                 a->Position.y,
                 Colour.x,
                 Colour.y,
-                Colour.z,
-                std::min(1.0f, a->Water),
-                a->Light);
+                Colour.z);
             
             a->RenderIndex = currentIndex;
 
