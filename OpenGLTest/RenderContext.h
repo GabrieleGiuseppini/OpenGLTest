@@ -177,15 +177,13 @@ private:
     //
 
     GLuint mLandShaderProgram;
-    GLint mLandShaderAmbientLightStrengthParameter;
-    GLint mLandShaderAmbientLightColorParameter;
+    GLint mLandShaderAmbientLightParameter;
     GLint mLandShaderLandColorParameter;
     GLint mLandShaderOrthoMatrixParameter;
     GLuint mLandShaderVBO;
 
     GLuint mShipTriangleShaderProgram;
-    GLint mShipTriangleShaderAmbientLightStrengthParameter;
-    GLint mShipTriangleShaderAmbientLightColorParameter;
+    GLint mShipTriangleShaderAmbientLightParameter;
     GLint mShipTriangleShaderOrthoMatrixParameter;
     GLuint mShipTriangleShaderPointVBO;
     GLuint mShipTriangleShaderTriangleVBO;
