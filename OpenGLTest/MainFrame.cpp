@@ -267,38 +267,41 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
     // Triangles
     //
 
-    mRenderContext->RenderShipTrianglesStart(mTriangles.size());
+    mRenderContext->RenderShipTrianglesStart(WorldWidth * WorldHeight, mTriangles.size());
 
+    // Points
+    // Note: we repeat this over and over to simulate what would happen in reality
+    // when we have to visit all points to assign them an index
+    int currentIndex = 0;
+    for (int c = 0; c < WorldWidth; ++c)
+    {
+        for (int r = 0; r < WorldHeight; ++r)
+        {
+            Point * a = &(mPoints[c][r]);
+            vec3f Colour = a->Colour;
+
+            mRenderContext->RenderShipTriangle_Point(
+                a->Position.x,
+                a->Position.y,
+                Colour.x,
+                Colour.y,
+                Colour.z,
+                std::min(1.0f, a->Water),
+                a->Light);
+            
+            a->RenderIndex = currentIndex;
+
+            ++currentIndex;
+        }
+    }
+
+    // Triangles
     for (Triangle const & triangle : mTriangles)
     {
-        vec3f colorA = triangle.PointA->Colour;
-        vec3f colorB = triangle.PointB->Colour;
-        vec3f colorC = triangle.PointC->Colour;
-
-        mRenderContext->RenderShipTriangle(
-            triangle.PointA->Position.x,
-            triangle.PointA->Position.y,
-            colorA.x,
-            colorA.y,
-            colorA.z,
-            std::min(1.0f, triangle.PointA->Water),
-            triangle.PointA->Light,
-
-            triangle.PointB->Position.x,
-            triangle.PointB->Position.y,
-            colorB.x,
-            colorB.y,
-            colorB.z,
-            std::min(1.0f, triangle.PointB->Water),
-            triangle.PointB->Light,
-
-            triangle.PointC->Position.x,
-            triangle.PointC->Position.y,
-            colorC.x,
-            colorC.y,
-            colorC.z,
-            std::min(1.0f, triangle.PointC->Water),
-            triangle.PointC->Light);
+        mRenderContext->RenderShipTriangle_Triangle(
+            triangle.PointA->RenderIndex,
+            triangle.PointB->RenderIndex,
+            triangle.PointC->RenderIndex);
     }
 
     mRenderContext->RenderShipTrianglesEnd();

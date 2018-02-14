@@ -24,13 +24,17 @@ RenderContext::RenderContext()
     , mShipTriangleShaderAmbientLightStrengthParameter(0)
     , mShipTriangleShaderAmbientLightColorParameter(0)
     , mShipTriangleShaderOrthoMatrixParameter(0)
-    , mShipTriangleShaderVBO(0)
+    , mShipTriangleShaderPointVBO(0)
+    , mShipTriangleShaderTriangleVBO(0)
     , mLandBuffer()
     , mLandBufferSize(0u)
     , mLandBufferMaxSize(0u)
-    , mShipTriangleBuffer()
-    , mShipTriangleBufferSize(0u)
-    , mShipTriangleBufferMaxSize(0u)
+    , mShipTrianglePointBuffer()
+    , mShipTrianglePointBufferSize(0u)
+    , mShipTrianglePointBufferMaxSize(0u)
+    , mShipTriangleTriangleBuffer()
+    , mShipTriangleTriangleBufferSize(0u)
+    , mShipTriangleTriangleBufferMaxSize(0u)
     , mZoom(70.0f)
     , mCamX(0.0f)
     , mCamY(0.0f)
@@ -140,7 +144,6 @@ RenderContext::RenderContext()
             float waterFactor = inputWater * paramAlphaWater;
             float lightFactor = inputLight * paramAlphaLight;
             vertexCol = (inputCol * (1.0 - waterFactor) + paramWaterCol * waterFactor) * (1.0 - lightFactor) + paramLightCol * lightFactor;
-            //vertexCol = inputCol;
 
             gl_Position = paramOrthoMatrix * vec4(inputPos.xy, -1.0, 1.0);
         }
@@ -184,8 +187,9 @@ RenderContext::RenderContext()
     mShipTriangleShaderAmbientLightColorParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramAmbientLightColor");
     mShipTriangleShaderOrthoMatrixParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramOrthoMatrix");
 
-    // Create VBO
-    glGenBuffers(1, &mShipTriangleShaderVBO);
+    // Create VBOs
+    glGenBuffers(1, &mShipTriangleShaderPointVBO);
+    glGenBuffers(1, &mShipTriangleShaderTriangleVBO);
 
     glUseProgram(mShipTriangleShaderProgram);
 
@@ -219,9 +223,14 @@ RenderContext::~RenderContext()
         glDeleteProgram(mLandShaderProgram);
     }
 
-    if (0 != mShipTriangleShaderVBO)
+    if (0 != mShipTriangleShaderPointVBO)
     {
-        glDeleteBuffers(1, &mShipTriangleShaderVBO);
+        glDeleteBuffers(1, &mShipTriangleShaderPointVBO);
+    }
+
+    if (0 != mShipTriangleShaderTriangleVBO)
+    {
+        glDeleteBuffers(1, &mShipTriangleShaderTriangleVBO);
     }
 
     if (0 != mShipTriangleShaderProgram)
@@ -320,21 +329,31 @@ void RenderContext::RenderLandEnd()
     glUseProgram(0);
 }
 
-void RenderContext::RenderShipTrianglesStart(size_t elements)
+void RenderContext::RenderShipTrianglesStart(size_t points, size_t triangles)
 {
-    if (elements != mShipTriangleBufferMaxSize)
+    if (points != mShipTrianglePointBufferMaxSize)
     {
         // Realloc
-        mShipTriangleBuffer.reset(new ShipTriangleElement[elements]);
-        mShipTriangleBufferMaxSize = elements;
+        mShipTrianglePointBuffer.reset(new ShipTriangleElement_Point[points]);
+        mShipTrianglePointBufferMaxSize = points;
     }
 
-    mShipTriangleBufferSize = 0u;
+    mShipTrianglePointBufferSize = 0u;
+
+    if (triangles != mShipTriangleTriangleBufferMaxSize)
+    {
+        // Realloc
+        mShipTriangleTriangleBuffer.reset(new ShipTriangleElement_Triangle[triangles]);
+        mShipTriangleTriangleBufferMaxSize = triangles;
+    }
+
+    mShipTriangleTriangleBufferSize = 0u;
 }
 
 void RenderContext::RenderShipTrianglesEnd()
 {
-    assert(mShipTriangleBufferSize == mShipTriangleBufferMaxSize);
+    assert(mShipTrianglePointBufferSize == mShipTrianglePointBufferMaxSize);
+    assert(mShipTriangleTriangleBufferSize == mShipTriangleTriangleBufferMaxSize);
     
     // Use program
     glUseProgram(mShipTriangleShaderProgram);
@@ -343,9 +362,9 @@ void RenderContext::RenderShipTrianglesEnd()
     glUniform1f(mShipTriangleShaderAmbientLightStrengthParameter, 1.0f);
     glUniformMatrix4fv(mShipTriangleShaderOrthoMatrixParameter, 1, GL_FALSE, &(mOrthoMatrix[0][0]));
 
-    // Upload ship triangles buffer 
-    glBindBuffer(GL_ARRAY_BUFFER, mShipTriangleShaderVBO);
-    glBufferData(GL_ARRAY_BUFFER, mShipTriangleBufferSize * sizeof(ShipTriangleElement), mShipTriangleBuffer.get(), GL_STATIC_DRAW);
+    // Upload ship points buffer 
+    glBindBuffer(GL_ARRAY_BUFFER, mShipTriangleShaderPointVBO);
+    glBufferData(GL_ARRAY_BUFFER, mShipTrianglePointBufferSize * sizeof(ShipTriangleElement_Point), mShipTrianglePointBuffer.get(), GL_STATIC_DRAW);
 
     // Describe InputPos
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (2 + 3 + 1 + 1) * sizeof(float), (void*)(0));
@@ -360,6 +379,9 @@ void RenderContext::RenderShipTrianglesEnd()
     glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, (2 + 3 + 1 + 1) * sizeof(float), (void*)((2 + 3 + 1) * sizeof(float)));
     glEnableVertexAttribArray(3);
 
+    // Upload ship triangles buffer 
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mShipTriangleShaderTriangleVBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mShipTriangleTriangleBufferSize * sizeof(ShipTriangleElement_Triangle), mShipTriangleTriangleBuffer.get(), GL_STATIC_DRAW);
 
     // Smooth lines and points
     glEnable(GL_LINE_SMOOTH);
@@ -372,7 +394,8 @@ void RenderContext::RenderShipTrianglesEnd()
 
 
     // Draw
-    glDrawArrays(GL_TRIANGLES, 0, 3 * mShipTriangleBufferSize);
+    //glDrawArrays(GL_TRIANGLES, 0, 3 * mShipTriangleBufferSize);
+    glDrawElements(GL_TRIANGLES, 3 * mShipTriangleTriangleBufferSize, GL_UNSIGNED_INT, 0);
 
     // Stop using program
     glUseProgram(0);

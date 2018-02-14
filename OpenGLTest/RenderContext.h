@@ -106,60 +106,46 @@ public:
     // Ship triangles
     //
 
-    void RenderShipTrianglesStart(size_t elements);
+    void RenderShipTrianglesStart(size_t points, size_t triangles);
 
-    inline void RenderShipTriangle(
-        float x1,
-        float y1,
-        float r1,
-        float g1,
-        float b1,
-        float water1,
-        float light1,
-        float x2,
-        float y2,
-        float r2,
-        float g2,
-        float b2,
-        float water2,
-        float light2,
-        float x3,
-        float y3,
-        float r3,
-        float g3,
-        float b3,
-        float water3,
-        float light3)
+    inline void RenderShipTriangle_Point(
+        float x,
+        float y,
+        float r,
+        float g,
+        float b,
+        float water,
+        float light)
     {
-        assert(mShipTriangleBufferSize + 1u <= mShipTriangleBufferMaxSize);
+        assert(mShipTrianglePointBufferSize + 1u <= mShipTrianglePointBufferMaxSize);
 
-        ShipTriangleElement * shipTriangleElement = &(mShipTriangleBuffer[mShipTriangleBufferSize]);
+        ShipTriangleElement_Point * shipTriangleElement_Point = &(mShipTrianglePointBuffer[mShipTrianglePointBufferSize]);
 
-        shipTriangleElement->x1 = x1;
-        shipTriangleElement->y1 = y1;
-        shipTriangleElement->r1 = r1;
-        shipTriangleElement->g1 = g1;
-        shipTriangleElement->b1 = b1;
-        shipTriangleElement->water1 = water1;
-        shipTriangleElement->light1 = light1;
+        shipTriangleElement_Point->x = x;
+        shipTriangleElement_Point->y = y;
+        shipTriangleElement_Point->r = r;
+        shipTriangleElement_Point->g = g;
+        shipTriangleElement_Point->b = b;
+        shipTriangleElement_Point->water = water;
+        shipTriangleElement_Point->light = light;
 
-        shipTriangleElement->x2 = x2;
-        shipTriangleElement->y2 = y2;
-        shipTriangleElement->r2 = r2;
-        shipTriangleElement->g2 = g2;
-        shipTriangleElement->b2 = b2;
-        shipTriangleElement->water2 = water2;
-        shipTriangleElement->light2 = light2;
+        ++mShipTrianglePointBufferSize;
+    }
 
-        shipTriangleElement->x3 = x3;
-        shipTriangleElement->y3 = y3;
-        shipTriangleElement->r3 = r3;
-        shipTriangleElement->g3 = g3;
-        shipTriangleElement->b3 = b3;
-        shipTriangleElement->water3 = water3;
-        shipTriangleElement->light3 = light3;
+    inline void RenderShipTriangle_Triangle(
+        int index1,
+        int index2,
+        int index3)
+    {
+        assert(mShipTriangleTriangleBufferSize + 1u <= mShipTriangleTriangleBufferMaxSize);
 
-        ++mShipTriangleBufferSize;
+        ShipTriangleElement_Triangle * shipTriangleElement_Triangle = &(mShipTriangleTriangleBuffer[mShipTriangleTriangleBufferSize]);
+
+        shipTriangleElement_Triangle->index1 = index1;
+        shipTriangleElement_Triangle->index2 = index2;
+        shipTriangleElement_Triangle->index3 = index3;
+
+        ++mShipTriangleTriangleBufferSize;
     }
 
     void RenderShipTrianglesEnd();
@@ -209,7 +195,8 @@ private:
     GLint mShipTriangleShaderAmbientLightStrengthParameter;
     GLint mShipTriangleShaderAmbientLightColorParameter;
     GLint mShipTriangleShaderOrthoMatrixParameter;
-    GLuint mShipTriangleShaderVBO;
+    GLuint mShipTriangleShaderPointVBO;
+    GLuint mShipTriangleShaderTriangleVBO;
 
 #pragma pack(push)
     struct LandElement
@@ -224,31 +211,22 @@ private:
         float y4;
     };
 
-    struct ShipTriangleElement
+    struct ShipTriangleElement_Point
     {
-        float x1;
-        float y1;
-        float r1;
-        float g1;
-        float b1;
-        float water1;
-        float light1;
+        float x;
+        float y;
+        float r;
+        float g;
+        float b;
+        float water;
+        float light;
+    };
 
-        float x2;
-        float y2;
-        float r2;
-        float g2;
-        float b2;
-        float water2;
-        float light2;
-
-        float x3;
-        float y3;
-        float r3;
-        float g3;
-        float b3;
-        float water3;
-        float light3;
+    struct ShipTriangleElement_Triangle
+    {
+        int index1;
+        int index2;
+        int index3;
     };
 #pragma pack(pop)
 
@@ -256,9 +234,12 @@ private:
     size_t mLandBufferSize;
     size_t mLandBufferMaxSize;
 
-    std::unique_ptr<ShipTriangleElement[]> mShipTriangleBuffer;
-    size_t mShipTriangleBufferSize;
-    size_t mShipTriangleBufferMaxSize;
+    std::unique_ptr<ShipTriangleElement_Point[]> mShipTrianglePointBuffer;
+    size_t mShipTrianglePointBufferSize;
+    size_t mShipTrianglePointBufferMaxSize;
+    std::unique_ptr<ShipTriangleElement_Triangle[]> mShipTriangleTriangleBuffer;
+    size_t mShipTriangleTriangleBufferSize;
+    size_t mShipTriangleTriangleBufferMaxSize;
 
     // The Ortho matrix
     float mOrthoMatrix[4][4];

@@ -88,6 +88,8 @@ private:
         float Water;
         float Light;
 
+        int RenderIndex;
+
         vec3f GetColour()
         {
             static constexpr vec3f LightPointColour = vec3f(1.0f, 1.0f, 0.25f);
