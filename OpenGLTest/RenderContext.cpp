@@ -361,7 +361,6 @@ void RenderContext::RenderShipTrianglesEnd()
     glEnableVertexAttribArray(3);
 
 
-    //TODOTEST
     // Smooth lines and points
     glEnable(GL_LINE_SMOOTH);
     // Set blending function

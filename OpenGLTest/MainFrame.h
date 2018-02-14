@@ -98,8 +98,8 @@ private:
             vec3f colour1 = Colour * (1.0f - colorWetness)
                 + WetPointColour * colorWetness;
 
-            if (Light == 0.0f)
-                return colour1;
+            //if (Light == 0.0f)
+            //    return colour1;
 
             float const colorLightness = fminf(Light, 1.0f) * 0.95f;
 
