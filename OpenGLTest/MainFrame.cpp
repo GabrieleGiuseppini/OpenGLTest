@@ -100,14 +100,6 @@ MainFrame::MainFrame()
 	mMainGLCanvasContext = std::make_unique<wxGLContext>(mMainGLCanvas.get());
 	mMainGLCanvasContext->SetCurrent(*mMainGLCanvas);
 
-    //
-    // Initialize OpenGL
-    //
-
-    InitOpenGL();
-
-    mRenderContext = std::unique_ptr<RenderContext>(new RenderContext());
-
 
 	//
 	// Build menu
@@ -149,26 +141,41 @@ MainFrame::MainFrame()
 	Maximize();
 	Centre();
 
+    try
+    {
+        //
+        // Initialize OpenGL
+        //
+
+        InitOpenGL();
+
+        mRenderContext = std::unique_ptr<RenderContext>(new RenderContext());
+
+        //
+        // Initialize timers
+        //
+
+        mGameTimer = std::make_unique<wxTimer>(this, ID_GAME_TIMER);
+        Connect(ID_GAME_TIMER, wxEVT_TIMER, (wxObjectEventFunction)&MainFrame::OnGameTimerTrigger);
+        mGameTimer->Start(0, true);
+
+        mStatsRefreshTimer = std::make_unique<wxTimer>(this, ID_STATS_REFRESH_TIMER);
+        Connect(ID_STATS_REFRESH_TIMER, wxEVT_TIMER, (wxObjectEventFunction)&MainFrame::OnStatsRefreshTimerTrigger);
+        mStatsRefreshTimer->Start(1000, false);
 
 
-	//
-	// Initialize timers
-	//
-	
-	mGameTimer = std::make_unique<wxTimer>(this, ID_GAME_TIMER);
-	Connect(ID_GAME_TIMER, wxEVT_TIMER, (wxObjectEventFunction)&MainFrame::OnGameTimerTrigger);	
-	mGameTimer->Start(0, true); 
+        //
+        // Create world
+        //
 
-	mStatsRefreshTimer = std::make_unique<wxTimer>(this, ID_STATS_REFRESH_TIMER);
-	Connect(ID_STATS_REFRESH_TIMER, wxEVT_TIMER, (wxObjectEventFunction)&MainFrame::OnStatsRefreshTimerTrigger);	
-	mStatsRefreshTimer->Start(1000, false);
+        CreateWorld();
+    }
+    catch (std::exception const & ex)
+    {
+        wxMessageBox(ex.what(), "ERROR");
 
-
-    //
-    // Create world
-    //
-
-    CreateWorld();
+        Close();
+    }
 }
 
 MainFrame::~MainFrame()
@@ -181,8 +188,10 @@ MainFrame::~MainFrame()
 
 void MainFrame::OnMainFrameClose(wxCloseEvent & /*event*/)
 {
-	mGameTimer->Stop();
-	mStatsRefreshTimer->Stop();
+    if (!!mGameTimer)
+	    mGameTimer->Stop();
+    if (!!mStatsRefreshTimer)
+	    mStatsRefreshTimer->Stop();
 
 	Destroy();
 }
@@ -262,9 +271,9 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
 
     for (Triangle const & triangle : mTriangles)
     {
-        vec3f colorA = triangle.PointA->GetColour();
-        vec3f colorB = triangle.PointB->GetColour();
-        vec3f colorC = triangle.PointC->GetColour();
+        vec3f colorA = triangle.PointA->Colour;
+        vec3f colorB = triangle.PointB->Colour;
+        vec3f colorC = triangle.PointC->Colour;
 
         mRenderContext->RenderShipTriangle(
             triangle.PointA->Position.x,
@@ -272,18 +281,24 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
             colorA.x,
             colorA.y,
             colorA.z,
+            std::min(1.0f, triangle.PointA->Water),
+            triangle.PointA->Light,
 
             triangle.PointB->Position.x,
             triangle.PointB->Position.y,
             colorB.x,
             colorB.y,
             colorB.z,
+            std::min(1.0f, triangle.PointB->Water),
+            triangle.PointB->Light,
 
             triangle.PointC->Position.x,
             triangle.PointC->Position.y,
             colorC.x,
             colorC.y,
-            colorC.z);
+            colorC.z,
+            std::min(1.0f, triangle.PointC->Water),
+            triangle.PointC->Light);
     }
 
     mRenderContext->RenderShipTrianglesEnd();
@@ -317,8 +332,10 @@ void MainFrame::OnStatsRefreshTimerTrigger(wxTimerEvent & /*event*/)
 
 void MainFrame::OnMainGLCanvasResize(wxSizeEvent & event)
 {
-    assert(nullptr != mRenderContext);
-    mRenderContext->SetCanvasSize(event.GetSize().GetWidth(), event.GetSize().GetHeight());
+    if (!!mRenderContext)
+    {
+        mRenderContext->SetCanvasSize(event.GetSize().GetWidth(), event.GetSize().GetHeight());
+    }
 }
 
 void MainFrame::OnMainGLCanvasLeftDown(wxMouseEvent & /*event*/)
@@ -797,9 +814,9 @@ void MainFrame::CreateWorld()
 
             float distance = mPoints[c][r].Position.length();
 
-            if (distance > 80.0f && distance < 120.0f)
+            if (distance > 20.0f && distance < 40.0f)
             {
-                float d = (distance - 100.0f) / 20.0f; // -1 <= d <= 1
+                float d = (distance - 30.0f) / 10.0f; // -1 <= d <= 1
                 mPoints[c][r].Water = 1.0f - (d * d);
             }
             else

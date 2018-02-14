@@ -15,10 +15,16 @@ RenderContext::RenderContext()
     , mLandShaderAmbientLightColorParameter(0)
     , mLandShaderLandColorParameter(0)
     , mLandShaderOrthoMatrixParameter(0)
+    , mLandShaderVBO(0)
     , mShipTriangleShaderProgram(0)
+    , mShipTriangleShaderAlphaWaterParameter(0)
+    , mShipTriangleShaderWaterColorParameter(0)
+    , mShipTriangleShaderAlphaLightParameter(0)
+    , mShipTriangleShaderLightColorParameter(0)
     , mShipTriangleShaderAmbientLightStrengthParameter(0)
     , mShipTriangleShaderAmbientLightColorParameter(0)
     , mShipTriangleShaderOrthoMatrixParameter(0)
+    , mShipTriangleShaderVBO(0)
     , mLandBuffer()
     , mLandBufferSize(0u)
     , mLandBufferMaxSize(0u)
@@ -58,41 +64,51 @@ RenderContext::RenderContext()
     mLandShaderProgram = glCreateProgram();
 
     char const * landVertexShaderSource = R"(
-        attribute vec2 InputPos;
-        uniform mat4 ParamOrthoMatrix;
+        attribute vec2 inputPos;
+        uniform mat4 paramOrthoMatrix;
         void main()
         {
-            gl_Position = ParamOrthoMatrix * vec4(InputPos.xy, -1.0, 1.0);
+            gl_Position = paramOrthoMatrix * vec4(inputPos.xy, -1.0, 1.0);
         }
     )";
 
     CompileShader(landVertexShaderSource, GL_VERTEX_SHADER, mLandShaderProgram);
 
     char const * landFragmentShaderSource = R"(
-        uniform vec3 ParamLandColor;
-        uniform float ParamAmbientLightStrength;
-        uniform vec3 ParamAmbientLightColor;
+        uniform vec3 paramLandColor;
+        uniform float paramAmbientLightStrength;
+        uniform vec3 paramAmbientLightColor;
         void main()
         {
-            vec3 ambientLight = ParamAmbientLightStrength * ParamAmbientLightColor;
-            gl_FragColor = vec4(ambientLight * ParamLandColor, 1.0);
+            vec3 ambientLight = paramAmbientLightStrength * paramAmbientLightColor;
+            gl_FragColor = vec4(ambientLight * paramLandColor, 1.0);
         } 
     )";
 
     CompileShader(landFragmentShaderSource, GL_FRAGMENT_SHADER, mLandShaderProgram);
 
     // Bind attribute locations
-    glBindAttribLocation(mLandShaderProgram, 0, "InputPos");
+    glBindAttribLocation(mLandShaderProgram, 0, "inputPos");
 
     // Link
     LinkProgram(mLandShaderProgram, "Land");
 
     // Get uniform locations
-    mLandShaderLandColorParameter = GetParameterLocation(mLandShaderProgram, "ParamLandColor");
-    mLandShaderAmbientLightStrengthParameter = GetParameterLocation(mLandShaderProgram, "ParamAmbientLightStrength");
-    mLandShaderAmbientLightColorParameter = GetParameterLocation(mLandShaderProgram, "ParamAmbientLightColor");
-    mLandShaderOrthoMatrixParameter = GetParameterLocation(mLandShaderProgram, "ParamOrthoMatrix");
+    mLandShaderLandColorParameter = GetParameterLocation(mLandShaderProgram, "paramLandColor");
+    mLandShaderAmbientLightStrengthParameter = GetParameterLocation(mLandShaderProgram, "paramAmbientLightStrength");
+    mLandShaderAmbientLightColorParameter = GetParameterLocation(mLandShaderProgram, "paramAmbientLightColor");
+    mLandShaderOrthoMatrixParameter = GetParameterLocation(mLandShaderProgram, "paramOrthoMatrix");
 
+    // Create VBO
+    glGenBuffers(1, &mLandShaderVBO);
+
+    glUseProgram(mLandShaderProgram);
+
+    // Set hardcoded parameters
+    glUniform3f(mLandShaderAmbientLightColorParameter, 1.0f, 1.0f, 1.0f);
+    glUniform3f(mLandShaderLandColorParameter, 0.5f, 0.5f, 0.5f);
+
+    glUseProgram(0);
 
 
     //
@@ -102,68 +118,85 @@ RenderContext::RenderContext()
     mShipTriangleShaderProgram = glCreateProgram();
 
     char const * shipTriangleShaderSource = R"(
-        attribute vec2 InputPos;
-        attribute vec3 InputCol;
-        varying vec3 InternalCol;
-        uniform mat4 ParamOrthoMatrix;
+
+        // Inputs
+        attribute vec2 inputPos;
+        attribute vec3 inputCol;
+        attribute float inputWater;
+        attribute float inputLight;
+
+        // Outputs
+        varying vec3 vertexCol;
+
+        // Params
+        uniform float paramAlphaWater;
+        uniform vec3 paramWaterCol;
+        uniform float paramAlphaLight;
+        uniform vec3 paramLightCol;
+        uniform mat4 paramOrthoMatrix;
+
         void main()
         {
-            InternalCol = InputCol;
-            gl_Position = ParamOrthoMatrix * vec4(InputPos.xy, -1.0, 1.0);
+            float waterFactor = inputWater * paramAlphaWater;
+            float lightFactor = inputLight * paramAlphaLight;
+            vertexCol = (inputCol * (1.0 - waterFactor) + paramWaterCol * waterFactor) * (1.0 - lightFactor) + paramLightCol * lightFactor;
+            //vertexCol = inputCol;
+
+            gl_Position = paramOrthoMatrix * vec4(inputPos.xy, -1.0, 1.0);
         }
     )";
 
     CompileShader(shipTriangleShaderSource, GL_VERTEX_SHADER, mShipTriangleShaderProgram);
 
     char const * shipTriangleFragmentShaderSource = R"(
-        varying vec3 InternalCol;
-        uniform float ParamAmbientLightStrength;
-        uniform vec3 ParamAmbientLightColor;
+
+        // Inputs from previous shader
+        varying vec3 vertexCol;
+
+        // Parameters
+        uniform float paramAmbientLightStrength;
+        uniform vec3 paramAmbientLightColor;
+
         void main()
         {
-            vec3 ambientLight = ParamAmbientLightStrength * ParamAmbientLightColor;
-            gl_FragColor = vec4(ambientLight * InternalCol, 1.0);
+            vec3 ambientLight = paramAmbientLightStrength * paramAmbientLightColor;
+            gl_FragColor = vec4(ambientLight * vertexCol, 1.0);
         } 
     )";
 
     CompileShader(shipTriangleFragmentShaderSource, GL_FRAGMENT_SHADER, mShipTriangleShaderProgram);
 
     // Bind attribute locations
-    glBindAttribLocation(mShipTriangleShaderProgram, 0, "InputPos");
-    glBindAttribLocation(mShipTriangleShaderProgram, 1, "InputCol");
+    glBindAttribLocation(mShipTriangleShaderProgram, 0, "inputPos");
+    glBindAttribLocation(mShipTriangleShaderProgram, 1, "inputCol");
+    glBindAttribLocation(mShipTriangleShaderProgram, 2, "inputWater");
+    glBindAttribLocation(mShipTriangleShaderProgram, 3, "inputLight");
 
     // Link
     LinkProgram(mShipTriangleShaderProgram, "ShipTriangle");
 
     // Get uniform locations
-    mShipTriangleShaderAmbientLightStrengthParameter = GetParameterLocation(mShipTriangleShaderProgram, "ParamAmbientLightStrength");
-    mShipTriangleShaderAmbientLightColorParameter = GetParameterLocation(mShipTriangleShaderProgram, "ParamAmbientLightColor");
-    mShipTriangleShaderOrthoMatrixParameter = GetParameterLocation(mShipTriangleShaderProgram, "ParamOrthoMatrix");
+    mShipTriangleShaderAlphaWaterParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramAlphaWater");
+    mShipTriangleShaderWaterColorParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramWaterCol");
+    mShipTriangleShaderAlphaLightParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramAlphaLight");
+    mShipTriangleShaderLightColorParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramLightCol");
+    mShipTriangleShaderAmbientLightStrengthParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramAmbientLightStrength");
+    mShipTriangleShaderAmbientLightColorParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramAmbientLightColor");
+    mShipTriangleShaderOrthoMatrixParameter = GetParameterLocation(mShipTriangleShaderProgram, "paramOrthoMatrix");
 
+    // Create VBO
+    glGenBuffers(1, &mShipTriangleShaderVBO);
 
-    //char const * vertexShaderSource = R"(
-    //    attribute vec3 InputPos;
-    //    attribute vec3 InputCol;
-    //    varying vec3 InternalColor;
-    //    uniform mat4 ParamOrthoMatrix;
-    //    void main()
-    //    {
-    //        InternalColor = InputCol;
-    //        gl_Position = ParamOrthoMatrix * vec4(InputPos.xyz, 1.0);
-    //    }
-    //)";
+    glUseProgram(mShipTriangleShaderProgram);
 
-    //char const * fragmentShaderSource = R"(
-    //    varying vec3 InternalColor;
-    //    uniform float ParamAmbientLightStrength;
-    //    uniform vec3 ParamAmbientLightColor;
-    //    void main()
-    //    {
-    //        vec3 ambientLight = ParamAmbientLightStrength * ParamAmbientLightColor;
-    //        gl_FragColor = vec4(ambientLight * InternalColor, 1.0);
-    //    } 
-    //)";
-
+    // Set hardcoded parameters    
+    glUniform1f(mShipTriangleShaderAlphaWaterParameter, 0.7f);
+    glUniform3f(mShipTriangleShaderWaterColorParameter, 0.0f, 0.0f, 0.8f);
+    glUniform1f(mShipTriangleShaderAlphaLightParameter, 0.95f);
+    glUniform3f(mShipTriangleShaderLightColorParameter, 1.0f, 1.0f, 0.25f);
+    glUniform3f(mShipTriangleShaderAmbientLightColorParameter, 1.0f, 1.0f, 1.0f);
+    
+    glUseProgram(0);
 
     //
     // Initialize ortho matrix
@@ -176,9 +209,19 @@ RenderContext::~RenderContext()
 {
     glUseProgram(0);
 
+    if (0 != mLandShaderVBO)
+    {
+        glDeleteBuffers(1, &mLandShaderVBO);
+    }
+
     if (0 != mLandShaderProgram)
     {        
         glDeleteProgram(mLandShaderProgram);
+    }
+
+    if (0 != mShipTriangleShaderVBO)
+    {
+        glDeleteBuffers(1, &mShipTriangleShaderVBO);
     }
 
     if (0 != mShipTriangleShaderProgram)
@@ -259,15 +302,11 @@ void RenderContext::RenderLandEnd()
     glUseProgram(mLandShaderProgram);
 
     // Set parameters
-    glUniform3f(mLandShaderAmbientLightColorParameter, 1.0f, 1.0f, 1.0f);
     glUniform1f(mLandShaderAmbientLightStrengthParameter, 1.0f);
-    glUniform3f(mLandShaderLandColorParameter, 0.5f, 0.5f, 0.5f);
     glUniformMatrix4fv(mLandShaderOrthoMatrixParameter, 1, GL_FALSE, &(mOrthoMatrix[0][0]));
 
     // Upload land buffer 
-    unsigned int myVBO;
-    glGenBuffers(1, &myVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, myVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, mLandShaderVBO);
     glBufferData(GL_ARRAY_BUFFER, mLandBufferSize * sizeof(LandElement), mLandBuffer.get(), GL_STATIC_DRAW);
 
     // Describe InputPos
@@ -301,22 +340,25 @@ void RenderContext::RenderShipTrianglesEnd()
     glUseProgram(mShipTriangleShaderProgram);
 
     // Set parameters
-    glUniform3f(mShipTriangleShaderAmbientLightColorParameter, 1.0f, 1.0f, 1.0f);
     glUniform1f(mShipTriangleShaderAmbientLightStrengthParameter, 1.0f);
     glUniformMatrix4fv(mShipTriangleShaderOrthoMatrixParameter, 1, GL_FALSE, &(mOrthoMatrix[0][0]));
 
     // Upload ship triangles buffer 
-    unsigned int myVBO;
-    glGenBuffers(1, &myVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, myVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, mShipTriangleShaderVBO);
     glBufferData(GL_ARRAY_BUFFER, mShipTriangleBufferSize * sizeof(ShipTriangleElement), mShipTriangleBuffer.get(), GL_STATIC_DRAW);
 
     // Describe InputPos
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (2 + 3) * sizeof(float), (void*)(0));
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (2 + 3 + 1 + 1) * sizeof(float), (void*)(0));
     glEnableVertexAttribArray(0);
     // Describe InputCol
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, (2 + 3) * sizeof(float), (void*)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, (2 + 3 + 1 + 1) * sizeof(float), (void*)(2 * sizeof(float)));
     glEnableVertexAttribArray(1);
+    // Describe Water
+    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, (2 + 3 + 1 + 1) * sizeof(float), (void*)((2 + 3) * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    // Describe Light
+    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, (2 + 3 + 1 + 1) * sizeof(float), (void*)((2 + 3 + 1) * sizeof(float)));
+    glEnableVertexAttribArray(3);
 
 
     //TODOTEST

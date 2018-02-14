@@ -114,16 +114,22 @@ public:
         float r1,
         float g1,
         float b1,
+        float water1,
+        float light1,
         float x2,
         float y2,
         float r2,
         float g2,
         float b2,
+        float water2,
+        float light2,
         float x3,
         float y3,
         float r3,
         float g3,
-        float b3)
+        float b3,
+        float water3,
+        float light3)
     {
         assert(mShipTriangleBufferSize + 1u <= mShipTriangleBufferMaxSize);
 
@@ -134,18 +140,24 @@ public:
         shipTriangleElement->r1 = r1;
         shipTriangleElement->g1 = g1;
         shipTriangleElement->b1 = b1;
+        shipTriangleElement->water1 = water1;
+        shipTriangleElement->light1 = light1;
 
         shipTriangleElement->x2 = x2;
         shipTriangleElement->y2 = y2;
         shipTriangleElement->r2 = r2;
         shipTriangleElement->g2 = g2;
         shipTriangleElement->b2 = b2;
+        shipTriangleElement->water2 = water2;
+        shipTriangleElement->light2 = light2;
 
         shipTriangleElement->x3 = x3;
         shipTriangleElement->y3 = y3;
         shipTriangleElement->r3 = r3;
         shipTriangleElement->g3 = g3;
         shipTriangleElement->b3 = b3;
+        shipTriangleElement->water3 = water3;
+        shipTriangleElement->light3 = light3;
 
         ++mShipTriangleBufferSize;
     }
@@ -187,11 +199,17 @@ private:
     GLint mLandShaderAmbientLightColorParameter;
     GLint mLandShaderLandColorParameter;
     GLint mLandShaderOrthoMatrixParameter;
+    GLuint mLandShaderVBO;
 
     GLuint mShipTriangleShaderProgram;
+    GLint mShipTriangleShaderAlphaWaterParameter;
+    GLint mShipTriangleShaderWaterColorParameter;
+    GLint mShipTriangleShaderAlphaLightParameter;
+    GLint mShipTriangleShaderLightColorParameter;
     GLint mShipTriangleShaderAmbientLightStrengthParameter;
     GLint mShipTriangleShaderAmbientLightColorParameter;
     GLint mShipTriangleShaderOrthoMatrixParameter;
+    GLuint mShipTriangleShaderVBO;
 
 #pragma pack(push)
     struct LandElement
@@ -213,18 +231,24 @@ private:
         float r1;
         float g1;
         float b1;
+        float water1;
+        float light1;
 
         float x2;
         float y2;
         float r2;
         float g2;
         float b2;
+        float water2;
+        float light2;
 
         float x3;
         float y3;
         float r3;
         float g3;
         float b3;
+        float water3;
+        float light3;
     };
 #pragma pack(pop)
 
