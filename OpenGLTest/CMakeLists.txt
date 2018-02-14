@@ -4,10 +4,15 @@
 #
 
 set  (OPEN_GL_TEST_SOURCES
+	GameException.h
 	MainApp.cpp
 	MainFrame.cpp
 	MainFrame.h
-	OpenGLTest.h)
+	OpenGLTest.h
+	RenderContext.cpp
+	RenderContext.h
+	Vectors.cpp
+	Vectors.h)
 
 source_group(" " FILES ${OPEN_GL_TEST_SOURCES})
 

@@ -1,4 +1,6 @@
 #include "OpenGLTest.h"
+#include "RenderContext.h"
+#include "Vectors.h"
 
 #include <wx/filedlg.h>
 #include <wx/frame.h>
@@ -65,10 +67,76 @@ private:
 private:
 
     bool RenderSetup();
-    bool Render();
+    bool RenderOld();
     void RenderCleanup();
 
     unsigned int mShaderProgram;
+
+private:
+
+    std::unique_ptr<RenderContext> mRenderContext;
+
+private:
+
+    void CreateWorld();
+    float GetOceanFloorHeight(float x, float seaDepth) const;
+
+    struct Point
+    {
+        vec2f Position;
+        vec3f Colour;
+        float Water;
+        float Light;
+
+        vec3f GetColour()
+        {
+            static constexpr vec3f LightPointColour = vec3f(1.0f, 1.0f, 0.25f);
+            static constexpr vec3f WetPointColour = vec3f(0.0f, 0.0f, 0.8f);
+
+            float const colorWetness = fminf(Water, 1.0f) * 0.7f;
+
+            vec3f colour1 = Colour * (1.0f - colorWetness)
+                + WetPointColour * colorWetness;
+
+            if (Light == 0.0f)
+                return colour1;
+
+            float const colorLightness = fminf(Light, 1.0f) * 0.95f;
+
+            return colour1 * (1.0f - colorLightness)
+                + LightPointColour * colorLightness;
+        }
+    };
+
+    struct Spring
+    {
+        Point * const PointA;
+        Point * const PointB;
+
+        Spring(Point * a, Point * b)
+            : PointA(a)
+            , PointB(b)
+        {}
+    };
+
+    struct Triangle
+    {
+        Point * const PointA;
+        Point * const PointB;
+        Point * const PointC;
+
+        Triangle(Point * a, Point * b, Point * c)
+            : PointA(a)
+            , PointB(b)
+            , PointC(c)
+        {}
+    };
+
+    static constexpr int WorldWidth = 100;
+    static constexpr int WorldHeight = 70;
+    Point mPoints[WorldWidth][WorldHeight];
+    std::vector<Spring> mSprings;
+    std::vector<Triangle> mTriangles;
 
 private:
 

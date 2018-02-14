@@ -106,9 +106,7 @@ MainFrame::MainFrame()
 
     InitOpenGL();
 
-    glViewport(0, 0, mMainGLCanvas->GetSize().GetWidth(), mMainGLCanvas->GetSize().GetHeight());
-
-    RenderSetup();
+    mRenderContext = std::unique_ptr<RenderContext>(new RenderContext());
 
 
 	//
@@ -164,6 +162,13 @@ MainFrame::MainFrame()
 	mStatsRefreshTimer = std::make_unique<wxTimer>(this, ID_STATS_REFRESH_TIMER);
 	Connect(ID_STATS_REFRESH_TIMER, wxEVT_TIMER, (wxObjectEventFunction)&MainFrame::OnStatsRefreshTimerTrigger);	
 	mStatsRefreshTimer->Start(1000, false);
+
+
+    //
+    // Create world
+    //
+
+    CreateWorld();
 }
 
 MainFrame::~MainFrame()
@@ -180,8 +185,6 @@ void MainFrame::OnMainFrameClose(wxCloseEvent & /*event*/)
 	mStatsRefreshTimer->Stop();
 
 	Destroy();
-
-    RenderCleanup();
 }
 
 void MainFrame::OnQuit(wxCommandEvent & /*event*/)
@@ -191,33 +194,117 @@ void MainFrame::OnQuit(wxCommandEvent & /*event*/)
 
 void MainFrame::OnPaint(wxPaintEvent& event)
 {
-	//Render();
-
 	event.Skip();
 }
 
 void MainFrame::OnKeyDown(wxKeyEvent & event)
 {
+    static float zoom = 70.0;
+
+    if (event.GetKeyCode() == '+')
+    {
+        zoom -= 2.0f;
+        mRenderContext->SetZoom(zoom);
+    }
+    else if (event.GetKeyCode() == '-')
+    {
+        zoom += 2.0f;
+        mRenderContext->SetZoom(zoom);
+    }
 	event.Skip();
 }
 
 void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
 {
-	// Render
-    if (Render())
-    {
-        // Make the timer for the next step start now
-        mGameTimer->Start(0, true);
+    // Make the timer for the next step start now
+    mGameTimer->Start(0, true);
 
-        ++mFrameCount;
+    //
+    // Render
+    //
+
+    assert(nullptr != mRenderContext);
+    mRenderContext->RenderStart();
+
+    //
+    // Land
+    //
+
+    static constexpr int LeftLand = -100;
+    static constexpr int RightLand = 100;
+    static constexpr float SeaDepth = 60.0f;
+
+    mRenderContext->RenderLandStart(RightLand - LeftLand);
+
+    for (int i = LeftLand; i < RightLand; ++i)
+    {
+        mRenderContext->RenderLand(
+            static_cast<float>(i),
+            static_cast<float>(i + 1), 
+            GetOceanFloorHeight(static_cast<float>(i), SeaDepth),
+            GetOceanFloorHeight(static_cast<float>(i + 1), SeaDepth),
+            -SeaDepth);
+    }    
+    
+    mRenderContext->RenderLandEnd();
+
+    //
+    // Springs
+    //
+
+    // TODO: all 20,000
+
+    //
+    // Triangles
+    //
+
+    mRenderContext->RenderShipTrianglesStart(mTriangles.size());
+
+    for (Triangle const & triangle : mTriangles)
+    {
+        vec3f colorA = triangle.PointA->GetColour();
+        vec3f colorB = triangle.PointB->GetColour();
+        vec3f colorC = triangle.PointC->GetColour();
+
+        mRenderContext->RenderShipTriangle(
+            triangle.PointA->Position.x,
+            triangle.PointA->Position.y,
+            colorA.x,
+            colorA.y,
+            colorA.z,
+
+            triangle.PointB->Position.x,
+            triangle.PointB->Position.y,
+            colorB.x,
+            colorB.y,
+            colorB.z,
+
+            triangle.PointC->Position.x,
+            triangle.PointC->Position.y,
+            colorC.x,
+            colorC.y,
+            colorC.z);
     }
+
+    mRenderContext->RenderShipTrianglesEnd();
+
+
+    //
+    // End
+    //
+
+    mRenderContext->RenderEnd();
+
+    mMainGLCanvas->SwapBuffers();
+
+    ++mFrameCount;
 }
 
 void MainFrame::OnStatsRefreshTimerTrigger(wxTimerEvent & /*event*/)
 {
 	std::wostringstream ss;
 	ss << GetWindowTitle();
-	ss << "  FPS: " << mFrameCount;
+	ss << "  FPS: " << mFrameCount << ", Triangles: " << mTriangles.size();
 
 	SetTitle(ss.str());
 
@@ -230,7 +317,8 @@ void MainFrame::OnStatsRefreshTimerTrigger(wxTimerEvent & /*event*/)
 
 void MainFrame::OnMainGLCanvasResize(wxSizeEvent & event)
 {
-    glViewport(0, 0, event.GetSize().GetWidth(), event.GetSize().GetHeight());
+    assert(nullptr != mRenderContext);
+    mRenderContext->SetCanvasSize(event.GetSize().GetWidth(), event.GetSize().GetHeight());
 }
 
 void MainFrame::OnMainGLCanvasLeftDown(wxMouseEvent & /*event*/)
@@ -554,13 +642,13 @@ bool MainFrame::RenderSetup()
     return true;
 }
 
-bool MainFrame::Render()
+bool MainFrame::RenderOld()
 {
     //
     // Clear canvas 
     //
 
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClearColor(0.529f, 0.808f, 0.980f, 1.0f); // (cornflower blue)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     //
@@ -670,4 +758,126 @@ void MainFrame::RenderCleanup()
     glUseProgram(0);
 }
 
+void MainFrame::CreateWorld()
+{
+    // 
+    // Create points
+    //
 
+    for (int c = 0; c < WorldWidth; ++c)
+    {
+        float x = static_cast<float>(c) - static_cast<float>(WorldWidth) / 2.0f;
+
+        for (int r = 0; r < WorldHeight; ++r)
+        {            
+            float y = static_cast<float>(r) - static_cast<float>(WorldHeight) / 2.0f;
+
+            mPoints[c][r].Position = vec2f(x, y);
+
+            if (r == 0 || r == WorldHeight - 1 || c == 0 || c == WorldWidth - 1
+                || r == WorldHeight / 2 || c == WorldWidth / 2)
+            {
+                mPoints[c][r].Colour = vec3f(0.2f, 0.2f, 0.2f);
+            }
+            else if ((r == WorldHeight / 3 || r == WorldHeight * 2 / 3)
+                && (c >= WorldWidth / 3 && c <= WorldWidth * 2 / 3))
+            {
+                mPoints[c][r].Colour = vec3f(0.6f, 0.2f, 0.2f);
+            }
+            else if ((r >= WorldHeight / 3 && r <= WorldHeight * 2 / 3)
+                && (c == WorldWidth / 3 || c == WorldWidth * 2 / 3))
+            {
+                mPoints[c][r].Colour = vec3f(0.6f, 0.2f, 0.2f);
+            }
+            else
+            {
+                mPoints[c][r].Colour = vec3f(0.9f, 0.9f, 0.9f);
+            }
+
+
+            float distance = mPoints[c][r].Position.length();
+
+            if (distance > 80.0f && distance < 120.0f)
+            {
+                float d = (distance - 100.0f) / 20.0f; // -1 <= d <= 1
+                mPoints[c][r].Water = 1.0f - (d * d);
+            }
+            else
+            {
+                mPoints[c][r].Water = 0.0f;
+            }
+
+            if (distance == 0)
+            {
+                mPoints[c][r].Light = 1.0f;
+            }
+            else if (distance < 10.0f)
+            {
+                mPoints[c][r].Light = 1.0f / (distance * distance);
+            }
+            else
+            { 
+                mPoints[c][r].Light = 0.0f;
+            }
+        }
+    }
+
+
+    //
+    // Create springs and triangles
+    //
+
+    static const int Directions[8][2] = {
+        { 1,  0 },	// E
+        { 1, -1 },	// NE
+        { 0, -1 },	// N
+        { -1, -1 },	// NW
+        { -1,  0 },	// W
+        { -1,  1 },	// SW
+        { 0,  1 },	// S
+        { 1,  1 }	// SE
+    };
+
+    for (int c = 0; c < WorldWidth; ++c)
+    {
+        for (int r = 0; r < WorldHeight; ++r)
+        {
+            Point * a = &(mPoints[c][r]);
+
+            for (int i = 0; i < 4; ++i)
+            {
+                int adjc1 = c + Directions[i][0];
+                int adjr1 = r + Directions[i][1];
+                
+                if (adjc1 >= 0 && adjc1 < WorldWidth && adjr1 >= 0)
+                {
+                    Point * b = &(mPoints[adjc1][adjr1]);
+
+                    //
+                    // Create a<->b spring
+                    // 
+
+                    mSprings.emplace_back(a, b);
+
+                    int adjc2 = c + Directions[i + 1][0];
+                    int adjr2 = r + Directions[i + 1][1];
+                    
+                    if (adjc2 >= 0 && adjc2 < WorldWidth && adjr2 >= 0)
+                    {
+                        Point * c = &(mPoints[adjc2][adjr2]);
+
+                        mTriangles.emplace_back(a, b, c);
+                    }
+                }
+            }
+        }
+    }
+}
+
+float MainFrame::GetOceanFloorHeight(float x, float seaDepth) const
+{
+    float const c1 = sinf(x * 0.05f) * 6.f;
+    float const c2 = sinf(x * 0.15f) * 2.f;
+    float const c3 = sin(x * 0.011f) * 25.f;
+    return -seaDepth + (c1 + c2 - c3) + 33.f;
+}
