@@ -256,6 +256,7 @@ void RenderContext::RenderLandStart(size_t elements)
     if (elements != mLandBufferMaxSize)
     {
         // Realloc
+        // TODO: first free then alloc
         mLandBuffer.reset(new LandElement[elements]);
         mLandBufferMaxSize = elements;
     }
@@ -293,6 +294,7 @@ void RenderContext::RenderShipTrianglesStart(size_t points, size_t triangles)
     if (points != mShipTrianglePointBufferMaxSize)
     {
         // Realloc
+        // TODO: first free then alloc
         mShipTrianglePointBuffer.reset(new ShipTriangleElement_Point[points]);
         mShipTrianglePointBufferMaxSize = points;
     }
@@ -302,6 +304,7 @@ void RenderContext::RenderShipTrianglesStart(size_t points, size_t triangles)
     if (triangles != mShipTriangleTriangleBufferMaxSize)
     {
         // Realloc
+        // TODO: first free then alloc
         mShipTriangleTriangleBuffer.reset(new ShipTriangleElement_Triangle[triangles]);
         mShipTriangleTriangleBufferMaxSize = triangles;
     }
