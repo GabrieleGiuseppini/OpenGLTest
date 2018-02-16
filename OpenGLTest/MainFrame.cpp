@@ -32,6 +32,7 @@ const long ID_STATS_REFRESH_TIMER = wxNewId();
 MainFrame::MainFrame()
 	: mMouseInfo()
 	, mFrameCount(0u)
+    , mCurrentTime(0.0f)
 {
 	Create(
 		nullptr, 
@@ -247,8 +248,8 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
     // Land
     //
 
-    static constexpr int LeftLand = -100;
-    static constexpr int RightLand = 100;
+    static constexpr int LeftLand = -140;
+    static constexpr int RightLand = 140;
     static constexpr float SeaDepth = 60.0f;
 
     mRenderContext->RenderLandStart(RightLand - LeftLand);
@@ -264,6 +265,29 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
     }    
     
     mRenderContext->RenderLandEnd();
+
+    //
+    // Water
+    //
+
+    static constexpr int LeftWater = -140;
+    static constexpr int RightWater = 140;
+    static constexpr float WaveHeight = 2.0f;
+
+    mRenderContext->RenderWaterStart(RightWater - LeftWater);
+
+    for (int i = LeftWater; i < RightWater; ++i)
+    {
+        mRenderContext->RenderWater(
+            static_cast<float>(i),
+            static_cast<float>(i + 1),
+            GetWaterHeight(static_cast<float>(i), WaveHeight),
+            GetWaterHeight(static_cast<float>(i + 1), WaveHeight),
+            -SeaDepth);
+    }
+
+    mRenderContext->RenderWaterEnd();
+
 
     //
     // Springs
@@ -322,6 +346,7 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
     mMainGLCanvas->SwapBuffers();
 
     ++mFrameCount;
+    mCurrentTime += 0.2f;
 }
 
 void MainFrame::OnStatsRefreshTimerTrigger(wxTimerEvent & /*event*/)
@@ -906,4 +931,11 @@ float MainFrame::GetOceanFloorHeight(float x, float seaDepth) const
     float const c2 = sinf(x * 0.15f) * 2.f;
     float const c3 = sin(x * 0.011f) * 25.f;
     return -seaDepth + (c1 + c2 - c3) + 33.f;
+}
+
+float MainFrame::GetWaterHeight(float x, float waveHeight) const
+{
+    float const c1 = sinf(x * 0.1f + mCurrentTime) * 0.5f;
+    float const c2 = sinf(x * 0.3f - mCurrentTime * 1.1f) * 0.3f;
+    return (c1 + c2) * waveHeight;
 }

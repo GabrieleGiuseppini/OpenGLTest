@@ -31,7 +31,12 @@ public:
 public:
 
     void RenderStart();
-    
+
+
+    //
+    // Land
+    //
+
     void RenderLandStart(size_t elements);
 
     inline void RenderLand(
@@ -59,18 +64,44 @@ public:
 
     void RenderLandEnd();
 
-    // TODOHERE
+
+    //
+    // Water
+    //
+
+    void RenderWaterStart(size_t elements);
 
     inline void RenderWater(
-        float x1,
-        float y1,
-        float x2,
-        float y2)
+        float left,
+        float right,
+        float leftTop,
+        float rightTop,
+        float bottom)
     {
-        // TODO: might want to have ad-hoc VertexShader fill-in the Z coordinate with -1, and
-        //       ad-hoc FragmentShader to use fixed water color
-        // TODO: store in ad-hoc buffer
+        assert(mWaterBufferSize + 1u <= mWaterBufferMaxSize);
+
+        WaterElement * waterElement = &(mWaterBuffer[mWaterBufferSize]);
+
+        waterElement->x1 = left;
+        waterElement->y1 = leftTop;
+        waterElement->x2 = right;
+        waterElement->y2 = rightTop;
+        waterElement->x3 = left;
+        waterElement->y3 = bottom;
+        waterElement->x4 = right;
+        waterElement->y4 = bottom;
+
+        ++mWaterBufferSize;
     }
+
+    void RenderWaterEnd();
+
+
+    //
+    // Springs
+    //
+
+    // TODOHERE
 
     inline void RenderSpring(
         float x1,
@@ -179,6 +210,11 @@ private:
     GLint mLandShaderOrthoMatrixParameter;
     GLuint mLandShaderVBO;
 
+    GLuint mWaterShaderProgram;
+    GLint mWaterShaderWaterColorParameter;
+    GLint mWaterShaderOrthoMatrixParameter;
+    GLuint mWaterShaderVBO;
+
     GLuint mShipTriangleShaderProgram;
     GLint mShipTriangleShaderOrthoMatrixParameter;
     GLuint mShipTriangleShaderPointVBO;
@@ -186,6 +222,18 @@ private:
 
 #pragma pack(push)
     struct LandElement
+    {
+        float x1;
+        float y1;
+        float x2;
+        float y2;
+        float x3;
+        float y3;
+        float x4;
+        float y4;
+    };
+
+    struct WaterElement
     {
         float x1;
         float y1;
@@ -217,6 +265,10 @@ private:
     std::unique_ptr<LandElement[]> mLandBuffer;
     size_t mLandBufferSize;
     size_t mLandBufferMaxSize;
+
+    std::unique_ptr<WaterElement[]> mWaterBuffer;
+    size_t mWaterBufferSize;
+    size_t mWaterBufferMaxSize;
 
     std::unique_ptr<ShipTriangleElement_Point[]> mShipTrianglePointBuffer;
     size_t mShipTrianglePointBufferSize;

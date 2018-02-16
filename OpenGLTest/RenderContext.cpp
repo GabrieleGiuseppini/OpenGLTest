@@ -14,6 +14,10 @@ RenderContext::RenderContext()
     , mLandShaderLandColorParameter(0)
     , mLandShaderOrthoMatrixParameter(0)
     , mLandShaderVBO(0)
+    , mWaterShaderProgram(0)
+    , mWaterShaderWaterColorParameter(0)
+    , mWaterShaderOrthoMatrixParameter(0)
+    , mWaterShaderVBO(0)
     , mShipTriangleShaderProgram(0)
     , mShipTriangleShaderOrthoMatrixParameter(0)
     , mShipTriangleShaderPointVBO(0)
@@ -21,6 +25,9 @@ RenderContext::RenderContext()
     , mLandBuffer()
     , mLandBufferSize(0u)
     , mLandBufferMaxSize(0u)
+    , mWaterBuffer()
+    , mWaterBufferSize(0u)
+    , mWaterBufferMaxSize(0u)
     , mShipTrianglePointBuffer()
     , mShipTrianglePointBufferSize(0u)
     , mShipTrianglePointBufferMaxSize(0u)
@@ -71,10 +78,10 @@ RenderContext::RenderContext()
     CompileShader(landVertexShaderSource, GL_VERTEX_SHADER, mLandShaderProgram);
 
     char const * landFragmentShaderSource = R"(
-        uniform vec3 paramLandColor;
+        uniform vec4 paramLandColor;
         void main()
         {
-            gl_FragColor = vec4(paramLandColor.xyz, 1.0);
+            gl_FragColor = paramLandColor;
         } 
     )";
 
@@ -96,9 +103,58 @@ RenderContext::RenderContext()
     glUseProgram(mLandShaderProgram);
 
     // Set hardcoded parameters
-    glUniform3f(mLandShaderLandColorParameter, 0.5f, 0.5f, 0.5f);
+    glUniform4f(mLandShaderLandColorParameter, 0.5f, 0.5f, 0.5f, 1.0f);
 
     glUseProgram(0);
+
+
+    //
+    // Create water program
+    //
+
+    mWaterShaderProgram = glCreateProgram();
+
+    char const * waterVertexShaderSource = R"(
+        attribute vec2 inputPos;
+        uniform mat4 paramOrthoMatrix;
+        void main()
+        {
+            gl_Position = paramOrthoMatrix * vec4(inputPos.xy, -1.0, 1.0);
+        }
+    )";
+
+    CompileShader(waterVertexShaderSource, GL_VERTEX_SHADER, mWaterShaderProgram);
+
+    char const * waterFragmentShaderSource = R"(
+        uniform vec4 paramWaterColor;
+        void main()
+        {
+            gl_FragColor = paramWaterColor;
+        } 
+    )";
+
+    CompileShader(waterFragmentShaderSource, GL_FRAGMENT_SHADER, mWaterShaderProgram);
+
+    // Bind attribute locations
+    glBindAttribLocation(mWaterShaderProgram, 0, "inputPos");
+
+    // Link
+    LinkProgram(mWaterShaderProgram, "Water");
+
+    // Get uniform locations
+    mWaterShaderWaterColorParameter = GetParameterLocation(mWaterShaderProgram, "paramWaterColor");
+    mWaterShaderOrthoMatrixParameter = GetParameterLocation(mWaterShaderProgram, "paramOrthoMatrix");
+
+    // Create VBO
+    glGenBuffers(1, &mWaterShaderVBO);
+
+    glUseProgram(mWaterShaderProgram);
+
+    // Set hardcoded parameters
+    glUniform4f(mWaterShaderWaterColorParameter, 0.0f, 0.25f, 1.0f, 0.5f);
+
+    glUseProgram(0);
+
 
 
     //
@@ -183,6 +239,16 @@ RenderContext::~RenderContext()
         glDeleteProgram(mLandShaderProgram);
     }
 
+    if (0 != mWaterShaderVBO)
+    {
+        glDeleteBuffers(1, &mWaterShaderVBO);
+    }
+
+    if (0 != mWaterShaderProgram)
+    {
+        glDeleteProgram(mWaterShaderProgram);
+    }
+
     if (0 != mShipTriangleShaderPointVBO)
     {
         glDeleteBuffers(1, &mShipTriangleShaderPointVBO);
@@ -256,7 +322,7 @@ void RenderContext::RenderLandStart(size_t elements)
     if (elements != mLandBufferMaxSize)
     {
         // Realloc
-        // TODO: first free then alloc
+        mLandBuffer.reset();
         mLandBuffer.reset(new LandElement[elements]);
         mLandBufferMaxSize = elements;
     }
@@ -284,6 +350,44 @@ void RenderContext::RenderLandEnd()
 
     // Draw
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4 * mLandBufferSize);
+
+    // Stop using program
+    glUseProgram(0);
+}
+
+void RenderContext::RenderWaterStart(size_t elements)
+{
+    if (elements != mWaterBufferMaxSize)
+    {
+        // Realloc
+        mWaterBuffer.reset();
+        mWaterBuffer.reset(new WaterElement[elements]);
+        mWaterBufferMaxSize = elements;
+    }
+
+    mWaterBufferSize = 0u;
+}
+
+void RenderContext::RenderWaterEnd()
+{
+    assert(mWaterBufferSize == mWaterBufferMaxSize);
+
+    // Use program
+    glUseProgram(mWaterShaderProgram);
+
+    // Set parameters
+    glUniformMatrix4fv(mWaterShaderOrthoMatrixParameter, 1, GL_FALSE, &(mOrthoMatrix[0][0]));
+
+    // Upload water buffer 
+    glBindBuffer(GL_ARRAY_BUFFER, mWaterShaderVBO);
+    glBufferData(GL_ARRAY_BUFFER, mWaterBufferSize * sizeof(WaterElement), mWaterBuffer.get(), GL_STATIC_DRAW);
+
+    // Describe InputPos
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // Draw
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4 * mWaterBufferSize);
 
     // Stop using program
     glUseProgram(0);

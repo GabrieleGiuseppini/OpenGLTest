@@ -80,6 +80,7 @@ private:
 
     void CreateWorld();
     float GetOceanFloorHeight(float x, float seaDepth) const;
+    float GetWaterHeight(float x, float waveHeight) const;
 
     struct Point
     {
@@ -162,4 +163,5 @@ private:
 	MouseInfo mMouseInfo;
 
 	uint64_t mFrameCount;	
+    float mCurrentTime;
 };
