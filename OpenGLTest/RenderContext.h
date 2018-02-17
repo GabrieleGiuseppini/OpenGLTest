@@ -190,6 +190,8 @@ public:
 
     void UploadShipPointEnd();
 
+    void RenderShipPoints();
+
 
     //
     // Springs
@@ -346,6 +348,9 @@ private:
     //
     // Ship points
     //
+
+    GLuint mShipPointShaderProgram;
+    GLint mShipPointShaderOrthoMatrixParameter;
 
 #pragma pack(push)
     struct ShipPointElement

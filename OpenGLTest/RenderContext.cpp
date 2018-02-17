@@ -29,6 +29,8 @@ RenderContext::RenderContext()
     , mWaterBufferMaxSize(0u)
     , mWaterVBO(0u)
     // Ship points
+    , mShipPointShaderProgram(0u)
+    , mShipPointShaderOrthoMatrixParameter(0)
     , mShipPointBuffer()
     , mShipPointBufferSize(0u)
     , mShipPointBufferMaxSize(0u)   
@@ -184,7 +186,63 @@ RenderContext::RenderContext()
     //
 
     glGenBuffers(1, &mShipPointVBO);
-    
+
+
+    //
+    // Create ship points program
+    //
+
+    mShipPointShaderProgram = glCreateProgram();
+
+    char const * shipPointShaderSource = R"(
+
+        // Inputs
+        attribute vec2 inputPos;
+        attribute vec3 inputCol;
+
+        // Outputs
+        varying vec3 vertexCol;
+
+        // Params
+        uniform mat4 paramOrthoMatrix;
+
+        void main()
+        {
+            vertexCol = inputCol;
+
+            gl_Position = paramOrthoMatrix * vec4(inputPos.xy, -1.0, 1.0);
+        }
+    )";
+
+    CompileShader(shipPointShaderSource, GL_VERTEX_SHADER, mShipPointShaderProgram);
+
+    char const * shipPointFragmentShaderSource = R"(
+
+        // Inputs from previous shader
+        varying vec3 vertexCol;
+
+        void main()
+        {
+            gl_FragColor = vec4(vertexCol.xyz, 1.0);
+        } 
+    )";
+
+    CompileShader(shipPointFragmentShaderSource, GL_FRAGMENT_SHADER, mShipPointShaderProgram);
+
+    // Bind attribute locations
+    glBindAttribLocation(mShipPointShaderProgram, 0, "inputPos");
+    glBindAttribLocation(mShipPointShaderProgram, 1, "inputCol");
+
+    // Link
+    LinkProgram(mShipPointShaderProgram, "Ship Point");
+
+    // Get uniform locations
+    mShipPointShaderOrthoMatrixParameter = GetParameterLocation(mShipPointShaderProgram, "paramOrthoMatrix");
+
+    // Set hardcoded parameters    
+    glUseProgram(mShipPointShaderProgram);
+    glUseProgram(0);
+
 
     //
     // Create spring program
@@ -394,6 +452,11 @@ RenderContext::~RenderContext()
         glDeleteBuffers(1, &mShipPointVBO);
     }
 
+    if (0u != mShipPointShaderProgram)
+    {
+        glDeleteProgram(mShipPointShaderProgram);
+    }
+
     if (0u != mSpringVBO)
     {
         glDeleteBuffers(1, &mSpringVBO);
@@ -541,6 +604,36 @@ void RenderContext::UploadShipPointEnd()
     // Upload point buffer 
     glBindBuffer(GL_ARRAY_BUFFER, mShipPointVBO);
     glBufferData(GL_ARRAY_BUFFER, mShipPointBufferSize * sizeof(ShipPointElement), mShipPointBuffer.get(), GL_DYNAMIC_DRAW);
+}
+
+void RenderContext::RenderShipPoints()
+{
+    assert(mShipPointBufferSize == mShipPointBufferMaxSize);
+
+    // Use program
+    glUseProgram(mShipPointShaderProgram);
+
+    // Set parameters
+    glUniformMatrix4fv(mShipPointShaderOrthoMatrixParameter, 1, GL_FALSE, &(mOrthoMatrix[0][0]));
+
+    // Describe ship points 
+    // TODO: move to subroutine
+    // Position
+    glBindBuffer(GL_ARRAY_BUFFER, mShipPointVBO);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (2 + 3) * sizeof(float), (void*)(0));
+    glEnableVertexAttribArray(0);
+    // Color
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, (2 + 3) * sizeof(float), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    // Set point size
+    glPointSize(0.15f * mCanvasHeight / mZoom);
+
+    // Draw
+    glDrawArrays(GL_POINTS, 0, mShipPointBufferSize);
+
+    // Stop using program
+    glUseProgram(0);
 }
 
 void RenderContext::RenderSpringsStart(size_t springs)

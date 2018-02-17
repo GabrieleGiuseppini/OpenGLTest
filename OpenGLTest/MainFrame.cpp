@@ -25,6 +25,7 @@ const long ID_MAIN_CANVAS = wxNewId();
 
 const long ID_QUIT_MENUITEM = wxNewId();
 const long ID_TRANSPARENT_WATER_MENUITEM = wxNewId();
+const long ID_DRAW_ONLY_POINTS_MENUITEM = wxNewId();
 const long ID_ABOUT_MENUITEM = wxNewId();
 
 const long ID_GAME_TIMER = wxNewId();
@@ -32,6 +33,7 @@ const long ID_STATS_REFRESH_TIMER = wxNewId();
 
 MainFrame::MainFrame()
 	: mIsWaterTransparent(false)
+    , mDrawOnlyPoints(false)
     , mMouseInfo()
 	, mFrameCount(0u)
     , mCurrentTime(0.0f)
@@ -121,9 +123,20 @@ MainFrame::MainFrame()
         wxEVT_MENU,
         [this](wxCommandEvent & event)
         {
-            mIsWaterTransparent = event.IsChecked();
+            this->mIsWaterTransparent = event.IsChecked();
         },
         ID_TRANSPARENT_WATER_MENUITEM);
+
+    wxMenuItem* drawOnlyPointsMenuItem = new wxMenuItem(controlMenu, ID_DRAW_ONLY_POINTS_MENUITEM, _("Draw Only Points\tP"), _("Draw only points"), wxITEM_CHECK);
+    controlMenu->Append(drawOnlyPointsMenuItem);
+    drawOnlyPointsMenuItem->Check(false);
+    this->Bind(
+        wxEVT_MENU,
+        [this](wxCommandEvent & event)
+        {
+            this->mDrawOnlyPoints = event.IsChecked();
+        },
+        ID_DRAW_ONLY_POINTS_MENUITEM);
 
     mainMenuBar->Append(controlMenu, _("&Control"));
 
@@ -345,53 +358,59 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
     mRenderContext->UploadShipPointEnd();
 
 
-    //
-    // Springs
-    //
-
-    mRenderContext->RenderSpringsStart(mSprings.size());
-
-    for (Spring const & spring : mSprings)
+    if (mDrawOnlyPoints)
     {
-        mRenderContext->RenderSpring(
-            spring.PointA->RenderIndex,
-            spring.PointB->RenderIndex);
+        mRenderContext->RenderShipPoints();
     }
-
-    mRenderContext->RenderSpringsEnd();
-
-
-    mRenderContext->RenderStressedSpringsStart(mSprings.size());
-
-    for (Spring const & spring : mSprings)
+    else
     {
-        if (spring.IsStressed)
+        //
+        // Springs
+        //
+
+        mRenderContext->RenderSpringsStart(mSprings.size());
+
+        for (Spring const & spring : mSprings)
         {
-            mRenderContext->RenderStressedSpring(
+            mRenderContext->RenderSpring(
                 spring.PointA->RenderIndex,
                 spring.PointB->RenderIndex);
         }
+
+        mRenderContext->RenderSpringsEnd();
+
+
+        mRenderContext->RenderStressedSpringsStart(mSprings.size());
+
+        for (Spring const & spring : mSprings)
+        {
+            if (spring.IsStressed)
+            {
+                mRenderContext->RenderStressedSpring(
+                    spring.PointA->RenderIndex,
+                    spring.PointB->RenderIndex);
+            }
+        }
+
+        mRenderContext->RenderStressedSpringsEnd();
+
+
+        //
+        // Triangles
+        //
+
+        mRenderContext->RenderShipTrianglesStart(mTriangles.size());
+
+        for (Triangle const & triangle : mTriangles)
+        {
+            mRenderContext->RenderShipTriangle(
+                triangle.PointA->RenderIndex,
+                triangle.PointB->RenderIndex,
+                triangle.PointC->RenderIndex);
+        }
+
+        mRenderContext->RenderShipTrianglesEnd();
     }
-
-    mRenderContext->RenderStressedSpringsEnd();
-
-
-    //
-    // Triangles
-    //
-
-    mRenderContext->RenderShipTrianglesStart(mTriangles.size());
-    
-    for (Triangle const & triangle : mTriangles)
-    {
-        mRenderContext->RenderShipTriangle(
-            triangle.PointA->RenderIndex,
-            triangle.PointB->RenderIndex,
-            triangle.PointC->RenderIndex);
-    }
-
-    mRenderContext->RenderShipTrianglesEnd();
-
 
     if (!mIsWaterTransparent)
     {
@@ -969,7 +988,7 @@ void MainFrame::CreateWorld()
 
                     Point * b = &(mPoints[adjc1][adjr1]);
 
-                    bool isStressed = (0 == (adjc1 % 10) || 0 == (adjr1 % 10));
+                    bool isStressed = (0 == (adjc1 % 10) && 0 == (adjr1 % 10));
 
                     mSprings.emplace_back(a, b, isStressed);
 

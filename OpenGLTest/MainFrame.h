@@ -144,6 +144,7 @@ private:
     std::vector<Triangle> mTriangles;
 
     bool mIsWaterTransparent;
+    bool mDrawOnlyPoints;
 
 private:
 
