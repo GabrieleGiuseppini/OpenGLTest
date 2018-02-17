@@ -311,14 +311,12 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
 
     mRenderContext->RenderLandStart(RightLand - LeftLand);
 
-    for (int i = LeftLand; i < RightLand; ++i)
+    for (int i = LeftLand; i <= RightLand; ++i)
     {
         mRenderContext->RenderLand(
             static_cast<float>(i),
-            static_cast<float>(i + 1), 
-            GetOceanFloorHeight(static_cast<float>(i), SeaDepth),
-            GetOceanFloorHeight(static_cast<float>(i + 1), SeaDepth),
-            -SeaDepth);
+            -SeaDepth,
+            GetOceanFloorHeight(static_cast<float>(i), SeaDepth));
     }    
     
     mRenderContext->RenderLandEnd();
@@ -1042,14 +1040,12 @@ void MainFrame::RenderWater()
 
     mRenderContext->RenderWaterStart(RightWater - LeftWater);
 
-    for (int i = LeftWater; i < RightWater; ++i)
+    for (int i = LeftWater; i <= RightWater; ++i)
     {
         mRenderContext->RenderWater(
             static_cast<float>(i),
-            static_cast<float>(i + 1),
-            GetWaterHeight(static_cast<float>(i), WaveHeight),
-            GetWaterHeight(static_cast<float>(i + 1), WaveHeight),
-            -SeaDepth);
+            -SeaDepth,
+            GetWaterHeight(static_cast<float>(i), WaveHeight));
     }
 
     mRenderContext->RenderWaterEnd();

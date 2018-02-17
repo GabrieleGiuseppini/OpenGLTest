@@ -149,27 +149,21 @@ public:
     // Land
     //
 
-    void RenderLandStart(size_t elements);
+    void RenderLandStart(size_t slices);
 
     inline void RenderLand(
-        float left,
-        float right,
-        float leftTop,
-        float rightTop,
-        float bottom)
+        float x,
+        float bottom,
+        float top)
     {
         assert(mLandBufferSize + 1u <= mLandBufferMaxSize);
 
         LandElement * landElement = &(mLandBuffer[mLandBufferSize]);
 
-        landElement->x1 = left;
-        landElement->y1 = leftTop;
-        landElement->x2 = right;
-        landElement->y2 = rightTop;
-        landElement->x3 = left;
-        landElement->y3 = bottom;
-        landElement->x4 = right;
-        landElement->y4 = bottom;
+        landElement->x1 = x;
+        landElement->y1 = top;
+        landElement->x2 = x;
+        landElement->y2 = bottom;
 
         ++mLandBufferSize;
     }
@@ -181,27 +175,21 @@ public:
     // Water
     //
 
-    void RenderWaterStart(size_t elements);
+    void RenderWaterStart(size_t slices);
 
     inline void RenderWater(
-        float left,
-        float right,
-        float leftTop,
-        float rightTop,
-        float bottom)
+        float x,
+        float bottom,
+        float top)
     {
         assert(mWaterBufferSize + 1u <= mWaterBufferMaxSize);
 
         WaterElement * waterElement = &(mWaterBuffer[mWaterBufferSize]);
 
-        waterElement->x1 = left;
-        waterElement->y1 = leftTop;
-        waterElement->x2 = right;
-        waterElement->y2 = rightTop;
-        waterElement->x3 = left;
-        waterElement->y3 = bottom;
-        waterElement->x4 = right;
-        waterElement->y4 = bottom;
+        waterElement->x1 = x;
+        waterElement->y1 = top;
+        waterElement->x2 = x;
+        waterElement->y2 = bottom;
 
         ++mWaterBufferSize;
     }
@@ -409,10 +397,6 @@ private:
         float y1;
         float x2;
         float y2;
-        float x3;
-        float y3;
-        float x4;
-        float y4;
     };
 #pragma pack(pop)
 
@@ -439,10 +423,6 @@ private:
         float y1;
         float x2;
         float y2;
-        float x3;
-        float y3;
-        float x4;
-        float y4;
     };
 #pragma pack(pop)
 

@@ -454,16 +454,20 @@ void RenderContext::RenderStart()
     vec3f clearColor = ClearColorBase * mAmbientLightIntensity;
     glClearColor(clearColor.x, clearColor.y, clearColor.z, 1.0f); 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Set anti-aliasing for lines
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_LINE_SMOOTH, GL_NICEST);
 }
 
-void RenderContext::RenderLandStart(size_t elements)
+void RenderContext::RenderLandStart(size_t slices)
 {
-    if (elements != mLandBufferMaxSize)
+    if (slices + 1 != mLandBufferMaxSize)
     {
         // Realloc
         mLandBuffer.reset();
-        mLandBuffer.reset(new LandElement[elements]);
-        mLandBufferMaxSize = elements;
+        mLandBuffer.reset(new LandElement[slices + 1]);
+        mLandBufferMaxSize = slices + 1;
     }
 
     mLandBufferSize = 0u;    
@@ -489,20 +493,20 @@ void RenderContext::RenderLandEnd()
     glEnableVertexAttribArray(0);
 
     // Draw
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, static_cast<GLsizei>(4 * mLandBufferSize));
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, static_cast<GLsizei>(2 * mLandBufferSize));
 
     // Stop using program
     glUseProgram(0);
 }
 
-void RenderContext::RenderWaterStart(size_t elements)
+void RenderContext::RenderWaterStart(size_t slices)
 {
-    if (elements != mWaterBufferMaxSize)
+    if (slices + 1 != mWaterBufferMaxSize)
     {
         // Realloc
         mWaterBuffer.reset();
-        mWaterBuffer.reset(new WaterElement[elements]);
-        mWaterBufferMaxSize = elements;
+        mWaterBuffer.reset(new WaterElement[slices + 1]);
+        mWaterBufferMaxSize = slices + 1;
     }
 
     mWaterBufferSize = 0u;
@@ -532,7 +536,7 @@ void RenderContext::RenderWaterEnd()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Draw
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, static_cast<GLsizei>(4 * mWaterBufferSize));
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, static_cast<GLsizei>(2 * mWaterBufferSize));
 
     // Stop using program
     glUseProgram(0);
