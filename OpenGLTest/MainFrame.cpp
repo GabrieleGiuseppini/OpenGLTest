@@ -244,11 +244,11 @@ void MainFrame::OnKeyDown(wxKeyEvent & event)
 {
     if (event.GetKeyCode() == '+')
     {
-        mRenderContext->SetZoom(mRenderContext->GetZoom() - 2.0f);
+        mRenderContext->SetZoom(mRenderContext->GetZoom() * 1.05f);
     }
     else if (event.GetKeyCode() == '-')
     {
-        mRenderContext->SetZoom(mRenderContext->GetZoom() + 2.0f);
+        mRenderContext->SetZoom(mRenderContext->GetZoom() / 1.05f);
     }
     else if (event.GetKeyCode() == 314)
     {

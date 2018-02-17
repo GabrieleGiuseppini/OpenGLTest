@@ -58,7 +58,7 @@ RenderContext::RenderContext()
     , mShipTriangleBufferMaxSize(0u)
     , mShipTriangleVBO(0u)
     // Render parameters
-    , mZoom(70.0f)
+    , mZoom(1.0f)
     , mCamX(0.0f)
     , mCamY(0.0f)
     , mCanvasWidth(100)
@@ -575,7 +575,7 @@ void RenderContext::RenderShipPoints()
     DescribeShipPointsVBO();
 
     // Set point size
-    glPointSize(0.15f * mCanvasHeight / mZoom);
+    glPointSize(0.15f * 2.0f * mCanvasHeight / mWorldHeight);
 
     // Draw
     glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(mShipPointBufferSize));
@@ -616,7 +616,7 @@ void RenderContext::RenderSpringsEnd()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, mSpringBufferSize * sizeof(SpringElement), mSpringBuffer.get(), GL_DYNAMIC_DRAW);
 
     // Set line size
-    glLineWidth(0.1f * mCanvasHeight / mZoom);
+    glLineWidth(0.1f * 2.0f * mCanvasHeight / mWorldHeight);
 
     // Draw
     glDrawElements(GL_LINES, static_cast<GLsizei>(2 * mSpringBufferSize), GL_UNSIGNED_INT, 0);
@@ -658,7 +658,7 @@ void RenderContext::RenderStressedSpringsEnd()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, mStressedSpringBufferSize * sizeof(SpringElement), mStressedSpringBuffer.get(), GL_DYNAMIC_DRAW);
 
     // Set line size
-    glLineWidth(0.1f * mCanvasHeight / mZoom);
+    glLineWidth(0.1f * 2.0f * mCanvasHeight / mWorldHeight);
 
     // Draw
     glDrawElements(GL_LINES, static_cast<GLsizei>(2 * mStressedSpringBufferSize), GL_UNSIGNED_INT, 0);
@@ -795,6 +795,6 @@ void RenderContext::CalculateOrthoMatrix()
 
 void RenderContext::CalculateWorldCoordinates()
 {
-    mWorldHeight = 2.0f * mZoom;
+    mWorldHeight = 2.0f * 70.0f / (mZoom + 0.001f);
     mWorldWidth = static_cast<float>(mCanvasWidth) / static_cast<float>(mCanvasHeight) * mWorldHeight;
 }
