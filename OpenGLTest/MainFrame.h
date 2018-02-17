@@ -81,6 +81,7 @@ private:
     void CreateWorld();
     float GetOceanFloorHeight(float x, float seaDepth) const;
     float GetWaterHeight(float x, float waveHeight) const;
+    void RenderWater();
 
     struct Point
     {
@@ -114,10 +115,12 @@ private:
     {
         Point * const PointA;
         Point * const PointB;
+        bool IsStressed;
 
-        Spring(Point * a, Point * b)
+        Spring(Point * a, Point * b, bool isStressed)
             : PointA(a)
             , PointB(b)
+            , IsStressed(isStressed)
         {}
     };
 
@@ -134,13 +137,13 @@ private:
         {}
     };
 
-    static constexpr int WorldWidth = 100;
-    static constexpr int WorldHeight = 70;
+    static constexpr int WorldWidth = 140;
+    static constexpr int WorldHeight = 110;
     Point mPoints[WorldWidth][WorldHeight];
     std::vector<Spring> mSprings;
     std::vector<Triangle> mTriangles;
 
-    float mAmbientLightIntensity;
+    bool mIsWaterTransparent;
 
 private:
 

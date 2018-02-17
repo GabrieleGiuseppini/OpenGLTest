@@ -24,13 +24,15 @@ namespace /* anonymous */ {
 const long ID_MAIN_CANVAS = wxNewId();
 
 const long ID_QUIT_MENUITEM = wxNewId();
+const long ID_TRANSPARENT_WATER_MENUITEM = wxNewId();
 const long ID_ABOUT_MENUITEM = wxNewId();
 
 const long ID_GAME_TIMER = wxNewId();
 const long ID_STATS_REFRESH_TIMER = wxNewId();
 
 MainFrame::MainFrame()
-	: mMouseInfo()
+	: mIsWaterTransparent(false)
+    , mMouseInfo()
 	, mFrameCount(0u)
     , mCurrentTime(0.0f)
 {
@@ -107,7 +109,25 @@ MainFrame::MainFrame()
 	//
 
 	wxMenuBar * mainMenuBar = new wxMenuBar();
-	
+
+    // Control
+
+    wxMenu * controlMenu = new wxMenu();
+
+    wxMenuItem* transparentWaterMenuItem = new wxMenuItem(controlMenu, ID_TRANSPARENT_WATER_MENUITEM, _("Transparent Water\tW"), _("Make water transparent"), wxITEM_CHECK);
+    controlMenu->Append(transparentWaterMenuItem);
+    transparentWaterMenuItem->Check(false);
+    this->Bind(
+        wxEVT_MENU,
+        [this](wxCommandEvent & event)
+        {
+            mIsWaterTransparent = event.IsChecked();
+        },
+        ID_TRANSPARENT_WATER_MENUITEM);
+
+    mainMenuBar->Append(controlMenu, _("&Control"));
+
+
 
 	// File
 
@@ -209,18 +229,42 @@ void MainFrame::OnPaint(wxPaintEvent& event)
 
 void MainFrame::OnKeyDown(wxKeyEvent & event)
 {
-    static float zoom = 70.0;
-
     if (event.GetKeyCode() == '+')
     {
-        zoom -= 2.0f;
-        mRenderContext->SetZoom(zoom);
+        mRenderContext->SetZoom(mRenderContext->GetZoom() - 2.0f);
     }
     else if (event.GetKeyCode() == '-')
     {
-        zoom += 2.0f;
-        mRenderContext->SetZoom(zoom);
+        mRenderContext->SetZoom(mRenderContext->GetZoom() + 2.0f);
     }
+    else if (event.GetKeyCode() == 314)
+    {
+        // Left
+        mRenderContext->SetCameraPosition(vec2f(
+            mRenderContext->GetCameraPosition().x - 10.0f, 
+            mRenderContext->GetCameraPosition().y));
+    }
+    else if (event.GetKeyCode() == 315)
+    {
+        // Up
+        mRenderContext->SetCameraPosition(vec2f(
+            mRenderContext->GetCameraPosition().x,
+            mRenderContext->GetCameraPosition().y + 10.0f));
+    }
+    else if (event.GetKeyCode() == 316)
+    {
+        // Right
+        mRenderContext->SetCameraPosition(vec2f(
+            mRenderContext->GetCameraPosition().x + 10.0f,
+            mRenderContext->GetCameraPosition().y));
+    }
+    else if (event.GetKeyCode() == 317)
+    {
+        mRenderContext->SetCameraPosition(vec2f(
+            mRenderContext->GetCameraPosition().x,
+            mRenderContext->GetCameraPosition().y - 10.0f));
+    }
+
 	event.Skip();
 }
 
@@ -230,12 +274,12 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
     mGameTimer->Start(0, true);
 
     //
-    // Calculate ambient light
+    // Calculate ambient light intensity
     //
 
     static auto startTime = std::chrono::steady_clock::now();
     auto phase = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime).count();
-    mAmbientLightIntensity = (1.0f + sinf(static_cast<float>(phase) / 2500.0f)) / 2.0f;
+    mRenderContext->SetAmbientLightIntensity((1.0f + sinf(static_cast<float>(phase) / 2500.0f)) / 2.0f);
 
     //
     // Render
@@ -266,69 +310,81 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
     
     mRenderContext->RenderLandEnd();
 
-    //
-    // Water
-    //
-
-    static constexpr int LeftWater = -140;
-    static constexpr int RightWater = 140;
-    static constexpr float WaveHeight = 2.0f;
-
-    mRenderContext->RenderWaterStart(RightWater - LeftWater);
-
-    for (int i = LeftWater; i < RightWater; ++i)
+    if (mIsWaterTransparent)
     {
-        mRenderContext->RenderWater(
-            static_cast<float>(i),
-            static_cast<float>(i + 1),
-            GetWaterHeight(static_cast<float>(i), WaveHeight),
-            GetWaterHeight(static_cast<float>(i + 1), WaveHeight),
-            -SeaDepth);
+        RenderWater();
     }
 
-    mRenderContext->RenderWaterEnd();
-
-
     //
-    // Springs
+    // Upload points
     //
 
-    // TODO: all 20,000
+    mRenderContext->UploadShipPointStart(WorldWidth * WorldHeight);
 
-    //
-    // Triangles
-    //
-
-    mRenderContext->RenderShipTrianglesStart(WorldWidth * WorldHeight, mTriangles.size());
-
-    // Points
-    // Note: we repeat this over and over to simulate what would happen in reality
-    // when we have to visit all points to assign them an index
     int currentIndex = 0;
     for (int c = 0; c < WorldWidth; ++c)
     {
         for (int r = 0; r < WorldHeight; ++r)
         {
             Point * a = &(mPoints[c][r]);
-            vec3f Colour = a->GetColour(mAmbientLightIntensity);
+            vec3f Colour = a->GetColour(mRenderContext->GetAmbientLightIntensity());
 
-            mRenderContext->RenderShipTriangle_Point(
+            mRenderContext->UploadShipPoint(
                 a->Position.x,
                 a->Position.y,
                 Colour.x,
                 Colour.y,
                 Colour.z);
-            
+
             a->RenderIndex = currentIndex;
 
             ++currentIndex;
         }
     }
 
+    mRenderContext->UploadShipPointEnd();
+
+
+    //
+    // Springs
+    //
+
+    mRenderContext->RenderSpringsStart(mSprings.size());
+
+    for (Spring const & spring : mSprings)
+    {
+        mRenderContext->RenderSpring(
+            spring.PointA->RenderIndex,
+            spring.PointB->RenderIndex);
+    }
+
+    mRenderContext->RenderSpringsEnd();
+
+
+    mRenderContext->RenderStressedSpringsStart(mSprings.size());
+
+    for (Spring const & spring : mSprings)
+    {
+        if (spring.IsStressed)
+        {
+            mRenderContext->RenderStressedSpring(
+                spring.PointA->RenderIndex,
+                spring.PointB->RenderIndex);
+        }
+    }
+
+    mRenderContext->RenderStressedSpringsEnd();
+
+
+    //
     // Triangles
+    //
+
+    mRenderContext->RenderShipTrianglesStart(mTriangles.size());
+    
     for (Triangle const & triangle : mTriangles)
     {
-        mRenderContext->RenderShipTriangle_Triangle(
+        mRenderContext->RenderShipTriangle(
             triangle.PointA->RenderIndex,
             triangle.PointB->RenderIndex,
             triangle.PointC->RenderIndex);
@@ -336,6 +392,11 @@ void MainFrame::OnGameTimerTrigger(wxTimerEvent & /*event*/)
 
     mRenderContext->RenderShipTrianglesEnd();
 
+
+    if (!mIsWaterTransparent)
+    {
+        RenderWater();
+    }
 
     //
     // End
@@ -902,22 +963,31 @@ void MainFrame::CreateWorld()
                 
                 if (adjc1 >= 0 && adjc1 < WorldWidth && adjr1 >= 0)
                 {
-                    Point * b = &(mPoints[adjc1][adjr1]);
-
                     //
                     // Create a<->b spring
                     // 
 
-                    mSprings.emplace_back(a, b);
+                    Point * b = &(mPoints[adjc1][adjr1]);
+
+                    bool isStressed = (0 == (adjc1 % 10) || 0 == (adjr1 % 10));
+
+                    mSprings.emplace_back(a, b, isStressed);
 
                     int adjc2 = c + Directions[i + 1][0];
                     int adjr2 = r + Directions[i + 1][1];
                     
                     if (adjc2 >= 0 && adjc2 < WorldWidth && adjr2 >= 0)
                     {
-                        Point * c = &(mPoints[adjc2][adjr2]);
+                        if (adjc2 >= 20 && adjc2 < WorldWidth - 20 && adjr2 >= 20 && adjr2 < WorldHeight - 20)
+                        {
+                            //
+                            // Create a<->b<->c triangle
+                            //
 
-                        mTriangles.emplace_back(a, b, c);
+                            Point * c = &(mPoints[adjc2][adjr2]);
+
+                            mTriangles.emplace_back(a, b, c);
+                        }
                     }
                 }
             }
@@ -938,4 +1008,30 @@ float MainFrame::GetWaterHeight(float x, float waveHeight) const
     float const c1 = sinf(x * 0.1f + mCurrentTime) * 0.5f;
     float const c2 = sinf(x * 0.3f - mCurrentTime * 1.1f) * 0.3f;
     return (c1 + c2) * waveHeight;
+}
+
+void MainFrame::RenderWater()
+{
+    //
+    // Water
+    //
+
+    static constexpr int LeftWater = -140;
+    static constexpr int RightWater = 140;
+    static constexpr float WaveHeight = 2.0f;
+    static constexpr float SeaDepth = 60.0f;
+
+    mRenderContext->RenderWaterStart(RightWater - LeftWater);
+
+    for (int i = LeftWater; i < RightWater; ++i)
+    {
+        mRenderContext->RenderWater(
+            static_cast<float>(i),
+            static_cast<float>(i + 1),
+            GetWaterHeight(static_cast<float>(i), WaveHeight),
+            GetWaterHeight(static_cast<float>(i + 1), WaveHeight),
+            -SeaDepth);
+    }
+
+    mRenderContext->RenderWaterEnd();
 }

@@ -6,6 +6,7 @@
 #pragma once
 
 #include "OpenGLTest.h"
+#include "Vectors.h"
 
 #include <cassert>
 #include <memory>
@@ -22,11 +23,75 @@ public:
 
 public:
 
-    void SetCanvasSize(int width, int height);
+    float GetZoom() const
+    {
+        return mZoom;
+    }
 
-    void SetZoom(float zoom);
+    void SetZoom(float zoom)
+    {
+        mZoom = zoom;
+
+        CalculateOrthoMatrix(
+            mZoom,
+            mCamX,
+            mCamY,
+            mCanvasWidth,
+            mCanvasHeight);
+    }
     
-    void SetCameraPosition(int x, int y);
+    vec2f GetCameraPosition() const
+    {
+        return vec2f(mCamX, mCamY);
+    }
+
+    void SetCameraPosition(vec2f const & pos)
+    {
+        mCamX = pos.x;
+        mCamY = pos.y;
+
+        CalculateOrthoMatrix(
+            mZoom,
+            mCamX,
+            mCamY,
+            mCanvasWidth,
+            mCanvasHeight);
+    }
+
+    int GetCanvasSizeWidth() const
+    {
+        return mCanvasWidth;
+    }
+
+    int GetCanvasSizeHeight() const
+    {
+        return mCanvasHeight;
+    }
+
+    void SetCanvasSize(int width, int height)
+    {
+        mCanvasWidth = width;
+        mCanvasHeight = height;
+
+        glViewport(0, 0, mCanvasWidth, mCanvasHeight);
+
+        CalculateOrthoMatrix(
+            mZoom,
+            mCamX,
+            mCamY,
+            mCanvasWidth,
+            mCanvasHeight);
+    }
+
+    float GetAmbientLightIntensity() const
+    {
+        return mAmbientLightIntensity;
+    }
+
+    void SetAmbientLightIntensity(float intensity)
+    {
+        mAmbientLightIntensity = intensity;
+    }
 
 public:
 
@@ -98,79 +163,96 @@ public:
 
 
     //
-    // Springs
+    // Ship Points
     //
 
-    // TODOHERE
+    void UploadShipPointStart(size_t points);
 
-    inline void RenderSpring(
-        float x1,
-        float y1,
-        float r1,
-        float g1,
-        float b1,
-        float x2,
-        float y2,
-        float r2,
-        float g2,
-        float b2)
-    {
-        // TODO: might want to have ad-hoc VertexShader fill-in the Z coordinate with -1
-        // TODO: store in ad-hoc buffer
-    }
-
-    inline void RenderStressedSpring(
-        float x1,
-        float y1,
-        float x2,
-        float y2)
-    {
-        // TODO: might want to have ad-hoc VertexShader fill-in the Z coordinate with -1, and
-        //       ad-hoc FragmentShader to use fixed stressed color
-        // TODO: store in ad-hoc buffer
-    }
-
-
-    //
-    // Ship triangles
-    //
-
-    void RenderShipTrianglesStart(size_t points, size_t triangles);
-
-    inline void RenderShipTriangle_Point(
+    inline void UploadShipPoint(
         float x,
         float y,
         float r,
         float g,
         float b)
     {
-        assert(mShipTrianglePointBufferSize + 1u <= mShipTrianglePointBufferMaxSize);
+        assert(mShipPointBufferSize + 1u <= mShipPointBufferMaxSize);
 
-        ShipTriangleElement_Point * shipTriangleElement_Point = &(mShipTrianglePointBuffer[mShipTrianglePointBufferSize]);
+        ShipPointElement * shipPointElement = &(mShipPointBuffer[mShipPointBufferSize]);
 
-        shipTriangleElement_Point->x = x;
-        shipTriangleElement_Point->y = y;
-        shipTriangleElement_Point->r = r;
-        shipTriangleElement_Point->g = g;
-        shipTriangleElement_Point->b = b;
+        shipPointElement->x = x;
+        shipPointElement->y = y;
+        shipPointElement->r = r;
+        shipPointElement->g = g;
+        shipPointElement->b = b;
 
-        ++mShipTrianglePointBufferSize;
+        ++mShipPointBufferSize;
     }
 
-    inline void RenderShipTriangle_Triangle(
-        int index1,
-        int index2,
-        int index3)
+    void UploadShipPointEnd();
+
+
+    //
+    // Springs
+    //
+
+    void RenderSpringsStart(size_t springs);
+
+    inline void RenderSpring(
+        int shipPointIndex1,
+        int shipPointIndex2)
     {
-        assert(mShipTriangleTriangleBufferSize + 1u <= mShipTriangleTriangleBufferMaxSize);
+        assert(mSpringBufferSize + 1u <= mSpringBufferMaxSize);
 
-        ShipTriangleElement_Triangle * shipTriangleElement_Triangle = &(mShipTriangleTriangleBuffer[mShipTriangleTriangleBufferSize]);
+        SpringElement * springElement = &(mSpringBuffer[mSpringBufferSize]);
 
-        shipTriangleElement_Triangle->index1 = index1;
-        shipTriangleElement_Triangle->index2 = index2;
-        shipTriangleElement_Triangle->index3 = index3;
+        springElement->shipPointIndex1 = shipPointIndex1;
+        springElement->shipPointIndex2 = shipPointIndex2;
 
-        ++mShipTriangleTriangleBufferSize;
+        ++mSpringBufferSize;
+    }
+
+    void RenderSpringsEnd();
+
+
+    void RenderStressedSpringsStart(size_t maxSprings);
+
+    inline void RenderStressedSpring(
+        int shipPointIndex1,
+        int shipPointIndex2)
+    {
+        assert(mStressedSpringBufferSize + 1u <= mStressedSpringBufferMaxSize);
+
+        SpringElement * springElement = &(mStressedSpringBuffer[mStressedSpringBufferSize]);
+
+        springElement->shipPointIndex1 = shipPointIndex1;
+        springElement->shipPointIndex2 = shipPointIndex2;
+
+        ++mStressedSpringBufferSize;
+    }
+
+    void RenderStressedSpringsEnd();
+
+
+    //
+    // Ship triangles
+    //
+
+    void RenderShipTrianglesStart(size_t triangles);
+
+    inline void RenderShipTriangle(
+        int shipPointIndex1,
+        int shipPointIndex2,
+        int shipPointIndex3)
+    {
+        assert(mShipTriangleBufferSize + 1u <= mShipTriangleBufferMaxSize);
+
+        ShipTriangleElement * shipTriangleElement = &(mShipTriangleBuffer[mShipTriangleBufferSize]);
+
+        shipTriangleElement->shipPointIndex1 = shipPointIndex1;
+        shipTriangleElement->shipPointIndex2 = shipPointIndex2;
+        shipTriangleElement->shipPointIndex3 = shipPointIndex3;
+
+        ++mShipTriangleBufferSize;
     }
 
     void RenderShipTrianglesEnd();
@@ -202,23 +284,13 @@ private:
 private:
 
     //
-    // The shader programs
+    // Land
     //
 
     GLuint mLandShaderProgram;
     GLint mLandShaderLandColorParameter;
+    GLint mLandShaderAmbientLightIntensityParameter;
     GLint mLandShaderOrthoMatrixParameter;
-    GLuint mLandShaderVBO;
-
-    GLuint mWaterShaderProgram;
-    GLint mWaterShaderWaterColorParameter;
-    GLint mWaterShaderOrthoMatrixParameter;
-    GLuint mWaterShaderVBO;
-
-    GLuint mShipTriangleShaderProgram;
-    GLint mShipTriangleShaderOrthoMatrixParameter;
-    GLuint mShipTriangleShaderPointVBO;
-    GLuint mShipTriangleShaderTriangleVBO;
 
 #pragma pack(push)
     struct LandElement
@@ -232,7 +304,25 @@ private:
         float x4;
         float y4;
     };
+#pragma pack(pop)
 
+    std::unique_ptr<LandElement[]> mLandBuffer;
+    size_t mLandBufferSize;
+    size_t mLandBufferMaxSize;
+
+    GLuint mLandVBO;
+
+
+    //
+    // Water
+    //
+
+    GLuint mWaterShaderProgram;
+    GLint mWaterShaderWaterColorParameter;
+    GLint mWaterShaderAmbientLightIntensityParameter;
+    GLint mWaterShaderOrthoMatrixParameter;
+
+#pragma pack(push)
     struct WaterElement
     {
         float x1;
@@ -244,8 +334,21 @@ private:
         float x4;
         float y4;
     };
+#pragma pack(pop)
 
-    struct ShipTriangleElement_Point
+    std::unique_ptr<WaterElement[]> mWaterBuffer;
+    size_t mWaterBufferSize;
+    size_t mWaterBufferMaxSize;
+
+    GLuint mWaterVBO;
+
+
+    //
+    // Ship points
+    //
+
+#pragma pack(push)
+    struct ShipPointElement
     {
         float x;
         float y;
@@ -253,29 +356,75 @@ private:
         float g;
         float b;
     };
+#pragma pack(pop)
 
-    struct ShipTriangleElement_Triangle
+    std::unique_ptr<ShipPointElement[]> mShipPointBuffer;
+    size_t mShipPointBufferSize;
+    size_t mShipPointBufferMaxSize;
+
+    GLuint mShipPointVBO;
+
+
+    //
+    // Springs
+    //
+
+    GLuint mSpringShaderProgram;
+    GLint mSpringShaderOrthoMatrixParameter;
+
+#pragma pack(push)
+    struct SpringElement
     {
-        int index1;
-        int index2;
-        int index3;
+        int shipPointIndex1;
+        int shipPointIndex2;
     };
 #pragma pack(pop)
 
-    std::unique_ptr<LandElement[]> mLandBuffer;
-    size_t mLandBufferSize;
-    size_t mLandBufferMaxSize;
+    std::unique_ptr<SpringElement[]> mSpringBuffer;
+    size_t mSpringBufferSize;
+    size_t mSpringBufferMaxSize;
 
-    std::unique_ptr<WaterElement[]> mWaterBuffer;
-    size_t mWaterBufferSize;
-    size_t mWaterBufferMaxSize;
+    GLuint mSpringVBO;
 
-    std::unique_ptr<ShipTriangleElement_Point[]> mShipTrianglePointBuffer;
-    size_t mShipTrianglePointBufferSize;
-    size_t mShipTrianglePointBufferMaxSize;
-    std::unique_ptr<ShipTriangleElement_Triangle[]> mShipTriangleTriangleBuffer;
-    size_t mShipTriangleTriangleBufferSize;
-    size_t mShipTriangleTriangleBufferMaxSize;
+
+    //
+    // Stressed springs
+    //
+
+    GLuint mStressedSpringShaderProgram;
+    GLint mStressedSpringShaderAmbientLightIntensityParameter;
+    GLint mStressedSpringShaderOrthoMatrixParameter;
+
+    std::unique_ptr<SpringElement[]> mStressedSpringBuffer;
+    size_t mStressedSpringBufferSize;
+    size_t mStressedSpringBufferMaxSize;
+
+    GLuint mStressedSpringVBO;
+
+
+    //
+    // Ship triangles
+    //
+
+    GLuint mShipTriangleShaderProgram;
+    GLint mShipTriangleShaderOrthoMatrixParameter;
+
+#pragma pack(push)
+    struct ShipTriangleElement
+    {
+        int shipPointIndex1;
+        int shipPointIndex2;
+        int shipPointIndex3;
+    };
+#pragma pack(pop)
+
+    std::unique_ptr<ShipTriangleElement[]> mShipTriangleBuffer;
+    size_t mShipTriangleBufferSize;
+    size_t mShipTriangleBufferMaxSize;
+
+    GLuint mShipTriangleVBO;
+
+private:
 
     // The Ortho matrix
     float mOrthoMatrix[4][4];
@@ -286,4 +435,5 @@ private:
     float mCamY;
     int mCanvasWidth;
     int mCanvasHeight;
+    float mAmbientLightIntensity;
 };
