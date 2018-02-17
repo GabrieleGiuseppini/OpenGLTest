@@ -253,29 +253,29 @@ void MainFrame::OnKeyDown(wxKeyEvent & event)
     else if (event.GetKeyCode() == 314)
     {
         // Left
-        mRenderContext->SetCameraPosition(vec2f(
-            mRenderContext->GetCameraPosition().x - 10.0f, 
-            mRenderContext->GetCameraPosition().y));
+        mRenderContext->SetCameraWorldPosition(vec2f(
+            mRenderContext->GetCameraWorldPosition().x - 10.0f,
+            mRenderContext->GetCameraWorldPosition().y));
     }
     else if (event.GetKeyCode() == 315)
     {
         // Up
-        mRenderContext->SetCameraPosition(vec2f(
-            mRenderContext->GetCameraPosition().x,
-            mRenderContext->GetCameraPosition().y + 10.0f));
+        mRenderContext->SetCameraWorldPosition(vec2f(
+            mRenderContext->GetCameraWorldPosition().x,
+            mRenderContext->GetCameraWorldPosition().y + 10.0f));
     }
     else if (event.GetKeyCode() == 316)
     {
         // Right
-        mRenderContext->SetCameraPosition(vec2f(
-            mRenderContext->GetCameraPosition().x + 10.0f,
-            mRenderContext->GetCameraPosition().y));
+        mRenderContext->SetCameraWorldPosition(vec2f(
+            mRenderContext->GetCameraWorldPosition().x + 10.0f,
+            mRenderContext->GetCameraWorldPosition().y));
     }
     else if (event.GetKeyCode() == 317)
     {
-        mRenderContext->SetCameraPosition(vec2f(
-            mRenderContext->GetCameraPosition().x,
-            mRenderContext->GetCameraPosition().y - 10.0f));
+        mRenderContext->SetCameraWorldPosition(vec2f(
+            mRenderContext->GetCameraWorldPosition().x,
+            mRenderContext->GetCameraWorldPosition().y - 10.0f));
     }
 
 	event.Skip();

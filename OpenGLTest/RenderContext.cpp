@@ -779,23 +779,22 @@ void RenderContext::DescribeShipPointsVBO()
     glEnableVertexAttribArray(1);
 }
 
-void RenderContext::CalculateOrthoMatrix(
-    float zoom,
-    float camX,
-    float camY,
-    int canvasWidth,
-    int canvasHeight)
+void RenderContext::CalculateOrthoMatrix()
 {
-    float halfHeight = zoom;
-    float halfWidth = static_cast<float>(canvasWidth) / static_cast<float>(canvasHeight) * halfHeight;
     static constexpr float zFar = 1000.0f;
     static constexpr float zNear = 1.0f;
 
-    mOrthoMatrix[0][0] = 1.0f / halfWidth;
-    mOrthoMatrix[1][1] = 1.0f / halfHeight;
+    mOrthoMatrix[0][0] = 2.0f / mWorldWidth;
+    mOrthoMatrix[1][1] = 2.0f / mWorldHeight;
     mOrthoMatrix[2][2] = -2.0f / (zFar - zNear);
-    mOrthoMatrix[3][0] = camX / halfWidth; // TBD: probably it has to be minus
-    mOrthoMatrix[3][1] = camY / halfHeight; // TBD: probably it has to be minus
+    mOrthoMatrix[3][0] = 2.0f * mCamX / mWorldWidth; // TBD: probably it has to be minus
+    mOrthoMatrix[3][1] = 2.0f * mCamY / mWorldHeight; // TBD: probably it has to be minus
     mOrthoMatrix[3][2] = -(zFar + zNear) / (zFar - zNear);
     mOrthoMatrix[3][3] = 1.0f;
+}
+
+void RenderContext::CalculateWorldCoordinates()
+{
+    mWorldHeight = 2.0f * mZoom;
+    mWorldWidth = static_cast<float>(mCanvasWidth) / static_cast<float>(mCanvasHeight) * mWorldHeight;
 }

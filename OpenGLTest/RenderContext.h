@@ -32,30 +32,22 @@ public:
     {
         mZoom = zoom;
 
-        CalculateOrthoMatrix(
-            mZoom,
-            mCamX,
-            mCamY,
-            mCanvasWidth,
-            mCanvasHeight);
+        CalculateWorldCoordinates();
+        CalculateOrthoMatrix();        
     }
     
-    vec2f GetCameraPosition() const
+    vec2f GetCameraWorldPosition() const
     {
         return vec2f(mCamX, mCamY);
     }
 
-    void SetCameraPosition(vec2f const & pos)
+    void SetCameraWorldPosition(vec2f const & pos)
     {
         mCamX = pos.x;
         mCamY = pos.y;
 
-        CalculateOrthoMatrix(
-            mZoom,
-            mCamX,
-            mCamY,
-            mCanvasWidth,
-            mCanvasHeight);
+        CalculateWorldCoordinates();
+        CalculateOrthoMatrix();
     }
 
     int GetCanvasSizeWidth() const
@@ -75,12 +67,13 @@ public:
 
         glViewport(0, 0, mCanvasWidth, mCanvasHeight);
 
-        CalculateOrthoMatrix(
-            mZoom,
-            mCamX,
-            mCamY,
-            mCanvasWidth,
-            mCanvasHeight);
+        CalculateWorldCoordinates();
+        CalculateOrthoMatrix();
+    }
+
+    vec2f GetWorldSize() const
+    {
+        return vec2f(mWorldWidth, mWorldHeight);
     }
 
     float GetAmbientLightIntensity() const
@@ -91,6 +84,60 @@ public:
     void SetAmbientLightIntensity(float intensity)
     {
         mAmbientLightIntensity = intensity;
+    }
+
+    bool GetShowStress() const
+    {
+        return mShowStress;
+    }
+
+    void SetShowStress(bool showStress)
+    {
+        mShowStress = showStress;
+    }
+
+    bool GetUseXRayMode() const
+    {
+        return mUseXRayMode;
+    }
+
+    void SetUseXRayMode(bool useXRayMode)
+    {
+        mUseXRayMode = useXRayMode;
+    }
+
+    bool GetShowShipThroughWater() const
+    {
+        return mShowShipThroughWater;
+    }
+
+    void SetShowShipThroughWater(bool showShipThroughWater)
+    {
+        mShowShipThroughWater = showShipThroughWater;
+    }
+
+    bool GetDrawPointsOnly() const
+    {
+        return mDrawPointsOnly;
+    }
+
+    void SetDrawPointsOnly(bool drawPointsOnly)
+    {
+        mDrawPointsOnly = drawPointsOnly;
+    }
+
+    inline vec2 Screen2World(vec2 const & screenCoordinates)
+    {
+        return vec2(
+            (screenCoordinates.x / static_cast<float>(mCanvasWidth) - 0.5f) * mWorldWidth + mCamX,
+            (screenCoordinates.y / static_cast<float>(mCanvasHeight) - 0.5f) * -mWorldHeight + mCamY);
+    }
+
+    inline vec2 ScreenOffset2WorldOffset(vec2 const & screenOffset)
+    {
+        return vec2(
+            screenOffset.x / static_cast<float>(mCanvasWidth) * mWorldWidth,
+            screenOffset.y / static_cast<float>(mCanvasHeight) * -mWorldHeight);
     }
 
 public:
@@ -340,12 +387,9 @@ private:
 
     void DescribeShipPointsVBO();
 
-    void CalculateOrthoMatrix(
-        float zoom,
-        float camX,
-        float camY,
-        int canvasWidth,
-        int canvasHeight);
+    void CalculateOrthoMatrix();
+
+    void CalculateWorldCoordinates();
 
 private:
 
@@ -498,11 +542,24 @@ private:
     // The Ortho matrix
     float mOrthoMatrix[4][4];
 
+    // The world coordinates
+    float mWorldWidth;
+    float mWorldHeight;
+
+
+    //
     // The current render parameters
+    //
+
     float mZoom;
     float mCamX;
     float mCamY;
     int mCanvasWidth;
     int mCanvasHeight;
     float mAmbientLightIntensity;
+
+    bool mShowStress;
+    bool mUseXRayMode;
+    bool mShowShipThroughWater;
+    bool mDrawPointsOnly;
 };
