@@ -973,7 +973,7 @@ void MainFrame::CreateWorld()
     {
         for (int r = 0; r < WorldHeight; ++r)
         {
-            Point * a = &(mPoints[c][r]);
+            Point * pA = &(mPoints[c][r]);
 
             for (int i = 0; i < 4; ++i)
             {
@@ -986,11 +986,11 @@ void MainFrame::CreateWorld()
                     // Create a<->b spring
                     // 
 
-                    Point * b = &(mPoints[adjc1][adjr1]);
+                    Point * pB = &(mPoints[adjc1][adjr1]);
 
                     bool isStressed = (0 == (adjc1 % 10) && 0 == (adjr1 % 10));
 
-                    mSprings.emplace_back(a, b, isStressed);
+                    mSprings.emplace_back(pA, pB, isStressed);
 
                     int adjc2 = c + Directions[i + 1][0];
                     int adjr2 = r + Directions[i + 1][1];
@@ -1003,9 +1003,9 @@ void MainFrame::CreateWorld()
                             // Create a<->b<->c triangle
                             //
 
-                            Point * c = &(mPoints[adjc2][adjr2]);
+                            Point * pC = &(mPoints[adjc2][adjr2]);
 
-                            mTriangles.emplace_back(a, b, c);
+                            mTriangles.emplace_back(pA, pB, pC);
                         }
                     }
                 }

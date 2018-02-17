@@ -262,19 +262,83 @@ public:
     void RenderEnd();
 
 private:
+
+    template<typename T, typename TDeleter>
+    class OpenGLObject
+    {
+    public:
+        OpenGLObject(T value)
+            : mValue(value)
+        {}
+
+        ~OpenGLObject()
+        {
+            TDeleter::Delete(mValue);
+        }
+
+        OpenGLObject(OpenGLObject const & other) = delete;
+
+        OpenGLObject & operator=(OpenGLObject const & other) = delete;
+
+        OpenGLObject & operator=(OpenGLObject && other)
+        {
+            TDeleter::Delete(mValue);
+            mValue = other.mValue;
+            other.mValue = 0;
+
+            return *this;
+        }
+
+        T operator*() const
+        {
+            return mValue;
+        }
+
+    private:
+        T mValue;
+    };
+
+    struct OpenGLProgramDeleter
+    {
+        static void Delete(GLuint p)
+        {
+            if (p != 0)
+            {
+                glDeleteProgram(p);
+            }
+        }
+    };
+
+    struct OpenGLVBODeleter
+    {
+        static void Delete(GLuint p)
+        {
+            if (p != 0)
+            {
+                glDeleteBuffers(1, &p);
+            }
+        }
+    };
+
+    using OpenGLShaderProgram = OpenGLObject<GLuint, OpenGLProgramDeleter>;
+    using OpenGLVBO = OpenGLObject<GLuint, OpenGLVBODeleter>;
+
+private:
     
     void CompileShader(
         char const * shaderSource,
         GLenum shaderType,
-        GLuint shaderProgram);
+        OpenGLShaderProgram const & shaderProgram);
 
     void LinkProgram(
-        GLuint shaderProgram,
+        OpenGLShaderProgram const & shaderProgram,
         std::string const & programName);
 
     GLint GetParameterLocation(
-        GLuint shaderProgram,
+        OpenGLShaderProgram const & shaderProgram,
         std::string const & parameterName);
+
+    void DescribeShipPointsVBO();
 
     void CalculateOrthoMatrix(
         float zoom,
@@ -289,7 +353,7 @@ private:
     // Land
     //
 
-    GLuint mLandShaderProgram;
+    OpenGLShaderProgram mLandShaderProgram;
     GLint mLandShaderLandColorParameter;
     GLint mLandShaderAmbientLightIntensityParameter;
     GLint mLandShaderOrthoMatrixParameter;
@@ -312,14 +376,14 @@ private:
     size_t mLandBufferSize;
     size_t mLandBufferMaxSize;
 
-    GLuint mLandVBO;
+    OpenGLVBO mLandVBO;
 
 
     //
     // Water
     //
 
-    GLuint mWaterShaderProgram;
+    OpenGLShaderProgram mWaterShaderProgram;
     GLint mWaterShaderWaterColorParameter;
     GLint mWaterShaderAmbientLightIntensityParameter;
     GLint mWaterShaderOrthoMatrixParameter;
@@ -342,14 +406,14 @@ private:
     size_t mWaterBufferSize;
     size_t mWaterBufferMaxSize;
 
-    GLuint mWaterVBO;
+    OpenGLVBO mWaterVBO;
 
 
     //
     // Ship points
     //
 
-    GLuint mShipPointShaderProgram;
+    OpenGLShaderProgram mShipPointShaderProgram;
     GLint mShipPointShaderOrthoMatrixParameter;
 
 #pragma pack(push)
@@ -367,14 +431,14 @@ private:
     size_t mShipPointBufferSize;
     size_t mShipPointBufferMaxSize;
 
-    GLuint mShipPointVBO;
+    OpenGLVBO mShipPointVBO;
 
 
     //
     // Springs
     //
 
-    GLuint mSpringShaderProgram;
+    OpenGLShaderProgram mSpringShaderProgram;
     GLint mSpringShaderOrthoMatrixParameter;
 
 #pragma pack(push)
@@ -389,14 +453,14 @@ private:
     size_t mSpringBufferSize;
     size_t mSpringBufferMaxSize;
 
-    GLuint mSpringVBO;
+    OpenGLVBO mSpringVBO;
 
 
     //
     // Stressed springs
     //
 
-    GLuint mStressedSpringShaderProgram;
+    OpenGLShaderProgram mStressedSpringShaderProgram;
     GLint mStressedSpringShaderAmbientLightIntensityParameter;
     GLint mStressedSpringShaderOrthoMatrixParameter;
 
@@ -404,14 +468,14 @@ private:
     size_t mStressedSpringBufferSize;
     size_t mStressedSpringBufferMaxSize;
 
-    GLuint mStressedSpringVBO;
+    OpenGLVBO mStressedSpringVBO;
 
 
     //
     // Ship triangles
     //
 
-    GLuint mShipTriangleShaderProgram;
+    OpenGLShaderProgram mShipTriangleShaderProgram;
     GLint mShipTriangleShaderOrthoMatrixParameter;
 
 #pragma pack(push)
@@ -427,7 +491,7 @@ private:
     size_t mShipTriangleBufferSize;
     size_t mShipTriangleBufferMaxSize;
 
-    GLuint mShipTriangleVBO;
+    OpenGLVBO mShipTriangleVBO;
 
 private:
 
